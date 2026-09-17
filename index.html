@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Bé Học · Little Learners</title>
+  <meta name="theme-color" content="#5b3df5" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <!-- iOS home-screen app -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Bé Học" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <!-- Top bar: profile + language + parent -->
+  <header id="topbar">
+    <div class="seg" id="profileSeg" role="group" aria-label="Chọn bé">
+      <button class="seg-btn" data-profile="toddler">🐣 <span class="lbl"><span class="lbl-main">Bé nhỏ</span><span class="seg-sub">2–3</span></span></button>
+      <button class="seg-btn" data-profile="preschool">🧒 <span class="lbl"><span class="lbl-main">Bé lớn</span><span class="seg-sub">4–5</span></span></button>
+    </div>
+    <div class="star-count" id="starCount" aria-label="Số sao">⭐ <span id="starNum">0</span></div>
+    <div class="topbar-right">
+      <button class="lang-btn" id="langBtn" aria-label="Đổi ngôn ngữ">🇻🇳</button>
+      <button class="parent-btn" id="parentBtn" aria-label="Ba mẹ">⚙️</button>
+    </div>
+  </header>
+
+  <!-- HOME: game grid -->
+  <main id="home" class="screen active">
+    <div class="home-head">
+      <h1 class="home-title" id="homeTitle">Bé Học</h1>
+      <div class="subject-tabs" id="subjectTabs" role="group" aria-label="Chọn môn">
+        <button class="seg-btn" data-subject="math">🔢 <span id="subMath">Toán &amp; Tư duy</span></button>
+        <button class="seg-btn" data-subject="english">🔤 <span id="subEng">Tiếng Anh</span></button>
+      </div>
+    </div>
+    <div class="grid" id="gameGrid"></div>
+  </main>
+
+  <!-- GAME screen -->
+  <section id="game" class="screen">
+    <button class="back-btn" id="backBtn" aria-label="Quay lại">🏠</button>
+    <div class="prompt-bar">
+      <button class="speak-btn" id="speakBtn" aria-label="Nghe lại">🔊</button>
+      <div class="prompt-text" id="promptText"></div>
+    </div>
+    <div class="play">
+      <div class="stage" id="stage"></div>
+      <div class="choices" id="choices"></div>
+    </div>
+  </section>
+
+  <!-- Celebration overlay -->
+  <div id="celebrate" class="overlay"></div>
+
+  <!-- Break-time overlay -->
+  <div id="breakScreen" class="overlay center-overlay">
+    <div class="panel">
+      <div class="big-emoji">🌈</div>
+      <div class="panel-title" id="breakTitle">Nghỉ một chút nhé!</div>
+      <div class="panel-sub" id="breakSub">Con chơi giỏi lắm. Đứng dậy vươn vai nào.</div>
+      <button class="big-action" id="breakOk">Chơi tiếp</button>
+    </div>
+  </div>
+
+  <!-- Parent panel (gated) -->
+  <div id="parentPanel" class="overlay center-overlay">
+    <div class="panel parent">
+      <div class="panel-title" id="parentGateTitle">Dành cho ba mẹ</div>
+      <div class="panel-sub" id="parentGateSub">Chạm vào số <b id="gateNum">7</b></div>
+      <div class="gate-nums" id="gateNums"></div>
+      <div id="parentBody" hidden>
+        <div class="parent-row">
+          <span data-i18n="langLabel">Ngôn ngữ</span>
+          <div class="seg small" id="langSeg">
+            <button class="seg-btn" data-lang="vi">🇻🇳 Tiếng Việt</button>
+            <button class="seg-btn" data-lang="en">🇬🇧 English</button>
+          </div>
+        </div>
+        <div class="parent-row">
+          <span data-i18n="voiceLabel">Giọng đọc</span>
+          <div class="seg small" id="voiceSeg">
+            <button class="seg-btn" data-voice="on">🔊 Bật</button>
+            <button class="seg-btn" data-voice="off">🔇 Tắt</button>
+          </div>
+        </div>
+        <div class="parent-row">
+          <span data-i18n="breakLabel">Nhắc nghỉ sau</span>
+          <div class="seg small" id="breakSeg">
+            <button class="seg-btn" data-break="10">10'</button>
+            <button class="seg-btn" data-break="15">15'</button>
+            <button class="seg-btn" data-break="0">Tắt</button>
+          </div>
+        </div>
+        <button class="link-btn" id="resetStars">Đặt lại số sao</button>
+        <p class="parent-note" id="parentNote"></p>
+        <button class="big-action" id="parentClose">Xong</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
