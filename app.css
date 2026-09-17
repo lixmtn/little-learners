@@ -25,7 +25,11 @@ body{
 button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
 
 /* ---------- Top bar ---------- */
-#topbar{ display:flex; align-items:center; gap:12px; padding:calc(env(safe-area-inset-top) + 12px) 20px 4px; }
+/* topbar must sit ABOVE the absolute .screen layers, but let taps fall through its empty gaps
+   (so the in-game back button underneath still works) */
+#topbar{ display:flex; align-items:center; gap:12px; padding:calc(env(safe-area-inset-top) + 12px) 20px 4px;
+  position:relative; z-index:50; pointer-events:none; }
+#topbar > *{ pointer-events:auto; }
 .seg{display:inline-flex; background:rgba(255,255,255,.75); backdrop-filter:blur(8px); border-radius:999px; padding:6px; box-shadow:0 6px 18px rgba(90,60,180,.16);}
 .seg.small{flex-wrap:wrap;}
 body.playing #profileSeg{visibility:hidden;} /* back button sits here during a game */
