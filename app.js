@@ -1,12 +1,19 @@
 /* ============================================================
    Bé Học · Little Learners
-   Offline, no-fail early-math + English game for a 2.5yo & 4yo.
+   Offline no-fail early-math + English for a 2.5yo (Dino) & 4yo (Pony).
+   Reward meta-game: Dino badge album / Pony jigsaw. Numberblocks add,
+   balance-scale measurement, give-N "feed" — grounded in Monkey Math /
+   Numberblocks / collectible-puzzle research.
    ============================================================ */
 'use strict';
 
 /* ---------- State ---------- */
-const DEFAULTS = { profile:'toddler', lang:'vi', subject:'math', voice:true, breakMins:15, stars:0 };
+const DEFAULTS = { profile:'toddler', lang:'vi', subject:'math', voice:true, breakMins:15,
+  dino:{ badges:0, prog:0 }, pony:{ done:0, pieces:0 } };
 const state = Object.assign({}, DEFAULTS, load());
+// backfill nested objects if an older save existed
+state.dino = Object.assign({badges:0,prog:0}, state.dino);
+state.pony = Object.assign({done:0,pieces:0}, state.pony);
 function load(){ try { return JSON.parse(localStorage.getItem('ll_state')) || {}; } catch(e){ return {}; } }
 function save(){ localStorage.setItem('ll_state', JSON.stringify(state)); }
 
@@ -20,11 +27,14 @@ const T = {
     appTitle:'Bé Học',
     subjects:{math:'Toán & Tư duy', english:'Tiếng Anh'},
     profiles:{toddler:'Bé nhỏ', preschool:'Bé lớn'},
-    games:{count:'Đếm số', numeral:'Học số', shapes:'Hình khối', bigsmall:'To & Nhỏ', colors:'Màu sắc',
-           odd:'Tìm cái khác', pattern:'Tiếp theo', abc:'Chữ cái ABC', words:'Từ vựng', colorsEN:'Màu sắc', shapesEN:'Hình khối'},
+    games:{count:'Đếm', feed:'Cho ăn', numeral:'Học số', add:'Phép cộng', balance:'Cân nặng',
+           shapes:'Hình khối', bigsmall:'To & Nhỏ', colors:'Màu sắc', odd:'Tìm cái khác', pattern:'Tiếp theo',
+           abc:'Chữ cái ABC', words:'Từ vựng', colorsEN:'Màu sắc', shapesEN:'Hình khối'},
     prompt:{
       count:'Đếm xem có bao nhiêu?',
-      numeral:(w)=>`Tìm số ${w}`,
+      feed:(n)=>`Cho bạn ấy ăn ${n} cái nào!`, feedSpeak:(w)=>`Cho ăn ${w} cái`,
+      add:'Có tất cả bao nhiêu khối?', addSpeak:(a,b)=>`${a} cộng ${b} bằng mấy?`,
+      heavier:'Chạm bên NẶNG hơn', lighter:'Chạm bên NHẸ hơn',
       shapesFind:(s)=>`Chạm vào hình ${s}`,
       biggest:'Chạm vào cái TO nhất', smallest:'Chạm vào cái NHỎ nhất',
       colorFind:(c)=>`Chạm vào màu ${c}`,
@@ -36,20 +46,26 @@ const T = {
     praise:['Giỏi quá!','Đúng rồi!','Tuyệt vời!','Con giỏi lắm!','Hay lắm!','Xuất sắc!'],
     tryagain:['Thử lại nhé!','Gần đúng rồi!','Chạm cái khác xem!'],
     hasCount:(w)=>`Đúng rồi, có ${w}!`,
+    reward:{ dinoTitle:'Bộ sưu tập Khủng long', ponyTitle:'Tranh của Pony', newBadge:'Huy hiệu mới!',
+      picDone:'Xong một bức tranh!', gallery:'Tranh đã ghép', collectHint:(n)=>`Đúng thêm ${n} câu để mở huy hiệu!`,
+      pieceHint:(n)=>`Còn ${n} mảnh nữa là xong tranh!`, allDino:'Sưu tầm đủ hết rồi, siêu ghê!' },
     breakT:'Nghỉ một chút nhé!', breakS:'Con chơi giỏi lắm. Đứng dậy vươn vai nào!', breakOk:'Chơi tiếp',
     parentTitle:'Dành cho ba mẹ', gate:'Chạm vào số', langLabel:'Ngôn ngữ', voiceLabel:'Giọng đọc',
-    breakLabel:'Nhắc nghỉ sau', reset:'Đặt lại số sao', done:'Xong',
+    breakLabel:'Nhắc nghỉ sau', reset:'Đặt lại phần thưởng', done:'Xong',
     note:'Khuyến nghị (AAP): trẻ 2–5 tuổi nên dùng màn hình khoảng 1 giờ/ngày và có ba mẹ chơi cùng. Ứng dụng cố ý không có điểm hay tính giờ để bé chơi thoải mái.'
   },
   en:{
     appTitle:'Little Learners',
     subjects:{math:'Math & Thinking', english:'English'},
     profiles:{toddler:'Little one', preschool:'Big kid'},
-    games:{count:'Count', numeral:'Numbers', shapes:'Shapes', bigsmall:'Big & Small', colors:'Colors',
-           odd:'Odd one out', pattern:'What’s next', abc:'ABC Letters', words:'First Words', colorsEN:'Colors', shapesEN:'Shapes'},
+    games:{count:'Count', feed:'Feed', numeral:'Numbers', add:'Add', balance:'Weigh',
+           shapes:'Shapes', bigsmall:'Big & Small', colors:'Colors', odd:'Odd one out', pattern:'What’s next',
+           abc:'ABC Letters', words:'First Words', colorsEN:'Colors', shapesEN:'Shapes'},
     prompt:{
       count:'How many are there?',
-      numeral:(w)=>`Find the number ${w}`,
+      feed:(n)=>`Feed your friend ${n}!`, feedSpeak:(w)=>`Feed ${w}`,
+      add:'How many blocks altogether?', addSpeak:(a,b)=>`${a} plus ${b} is?`,
+      heavier:'Tap the HEAVIER side', lighter:'Tap the LIGHTER side',
       shapesFind:(s)=>`Tap the ${s}`,
       biggest:'Tap the BIGGEST one', smallest:'Tap the SMALLEST one',
       colorFind:(c)=>`Tap the ${c} one`,
@@ -61,21 +77,40 @@ const T = {
     praise:['Great job!','That’s right!','Awesome!','You did it!','Well done!','Fantastic!'],
     tryagain:['Try again!','Almost!','Tap another one!'],
     hasCount:(w)=>`Yes, there are ${w}!`,
+    reward:{ dinoTitle:'Dino Collection', ponyTitle:'Pony Picture', newBadge:'New badge!',
+      picDone:'Picture complete!', gallery:'Finished pictures', collectHint:(n)=>`${n} more right to unlock a badge!`,
+      pieceHint:(n)=>`${n} more pieces to finish the picture!`, allDino:'You collected them all, amazing!' },
     breakT:'Time for a little break!', breakS:'You played so well. Stand up and stretch!', breakOk:'Keep playing',
     parentTitle:'For grown-ups', gate:'Tap the number', langLabel:'Language', voiceLabel:'Voice',
-    breakLabel:'Break reminder', reset:'Reset stars', done:'Done',
+    breakLabel:'Break reminder', reset:'Reset rewards', done:'Done',
     note:'AAP guidance: ages 2–5 do best with ~1 hour/day of screens and a grown-up playing along. No scores or timers on purpose, so play stays relaxed.'
   }
 };
 const tt = ()=>T[state.lang];
 const word = (n)=> NUM[state.lang][n] || String(n);
 
+/* ---------- Themes & rewards ---------- */
+const theme = ()=> state.profile==='toddler' ? 'dino' : 'pony';
+const DINO_SET = [
+  {e:'🦖',vi:'Khủng long T-Rex',en:'T-Rex'}, {e:'🦕',vi:'Cổ dài',en:'Long-neck'},
+  {e:'🥚',vi:'Trứng khủng long',en:'Dino egg'}, {e:'🦴',vi:'Hoá thạch',en:'Fossil'},
+  {e:'🌋',vi:'Núi lửa',en:'Volcano'}, {e:'🐊',vi:'Cá sấu',en:'Croc'},
+  {e:'🐢',vi:'Rùa',en:'Turtle'}, {e:'🦎',vi:'Thằn lằn',en:'Lizard'},
+  {e:'🐉',vi:'Rồng',en:'Dragon'}, {e:'🦣',vi:'Voi ma mút',en:'Mammoth'},
+  {e:'🦈',vi:'Cá mập',en:'Shark'}, {e:'🦤',vi:'Chim Dodo',en:'Dodo'}
+];
+const DINO_UNLOCK = 4;
+const PONY_SET = ['🦄','🐴','🎠','🌈','🦋','🌸','💖','🐝','🌟','🍭','🎀','🦩'];
+const PONY_TILES = 6;
+
 /* ---------- Game catalog ---------- */
 const GAMES = [
   { id:'count',   gen:'count',   icon:'🍎', color:'#ff6f91', subject:'math', profiles:['toddler','preschool'] },
-  { id:'numeral', gen:'numeral', icon:'🔢', color:'#7c83ff', subject:'math', profiles:['toddler','preschool'] },
+  { id:'feed',    gen:'feed',    icon:'🍖', color:'#20c997', subject:'math', profiles:['toddler'] },
+  { id:'add',     gen:'add',     icon:'➕', color:'#4dabf7', subject:'math', profiles:['preschool'] },
+  { id:'balance', gen:'balance', icon:'⚖️', color:'#7c83ff', subject:'math', profiles:['preschool'] },
   { id:'shapes',  gen:'shapes',  icon:'🔺', color:'#ff9f5a', subject:'math', profiles:['toddler','preschool'] },
-  { id:'bigsmall',gen:'bigsmall',icon:'📏', color:'#2fc19e', subject:'math', profiles:['toddler','preschool'] },
+  { id:'bigsmall',gen:'bigsmall',icon:'📏', color:'#2fc19e', subject:'math', profiles:['toddler'] },
   { id:'colors',  gen:'colors',  icon:'🎨', color:'#c77dff', subject:'math', profiles:['toddler','preschool'] },
   { id:'odd',     gen:'odd',     icon:'🔍', color:'#ffb14e', subject:'math', profiles:['toddler'] },
   { id:'pattern', gen:'pattern', icon:'🧩', color:'#39b7e5', subject:'math', profiles:['preschool'] },
@@ -84,10 +119,9 @@ const GAMES = [
   { id:'colorsEN',gen:'colors',  icon:'🌈', color:'#ff6f91', subject:'english', profiles:['toddler','preschool'], en:true },
   { id:'shapesEN',gen:'shapes',  icon:'⭐', color:'#ffc24b', subject:'english', profiles:['toddler','preschool'], en:true }
 ];
-
 const CFG = {
-  toddler:  { countMax:3, choices:2, numeralMax:5, colorCount:3, shapeCount:3, bigCount:2, oddCount:4, patternUnit:2 },
-  preschool:{ countMax:6, choices:3, numeralMax:9, colorCount:4, shapeCount:4, bigCount:3, oddCount:6, patternUnit:3 }
+  toddler:  { countMax:3, choices:2, colorCount:3, shapeCount:3, bigCount:2, oddCount:4, patternUnit:2, feedMax:4 },
+  preschool:{ countMax:10,choices:3, colorCount:4, shapeCount:4, bigCount:3, oddCount:6, patternUnit:3, feedMax:6 }
 };
 const cfg = ()=> CFG[state.profile];
 
@@ -96,10 +130,9 @@ const THEMES = [
   ['🍎','🍓','🍊','🍌','🍇','🍑'], ['🐶','🐱','🐰','🐸','🐥','🐷'],
   ['⭐','🎈','🚗','⚽','🌸','🍪'], ['🦆','🐟','🦋','🐝','🐞','🐠']
 ];
+const DINO_OBJS = ['🦖','🦕','🥚','🦴','🌿','🍖'];
 const BIG_OBJS = ['🎈','🍎','🐘','🌳','⭐','🚗','🐻','🍄','🌻','🐟'];
-const ODD_PAIRS = [
-  ['🐶','🐱'],['🍎','🍊'],['⭐','🌙'],['🐸','🐢'],['🚗','🚌'],['🌸','🌻'],['🐥','🦆'],['🍓','🍇'],['😺','🐭'],['🔵','🟢']
-];
+const ODD_PAIRS = [['🐶','🐱'],['🍎','🍊'],['⭐','🌙'],['🐸','🐢'],['🚗','🚌'],['🌸','🌻'],['🐥','🦆'],['🍓','🍇'],['😺','🐭'],['🦖','🐊']];
 const COLOR_HEX = { red:'#ff4d4f', blue:'#3b82f6', green:'#22c55e', yellow:'#facc15', orange:'#fb923c', purple:'#a855f7', pink:'#f472b6' };
 const COLOR_KEYS = Object.keys(COLOR_HEX);
 const WORDS = [
@@ -129,7 +162,7 @@ function tone(freq,dur,type='sine',vol=0.18,delay=0){ const c=audio(); if(!c) re
 const sGood = ()=>{ tone(523,0.14,'triangle',0.2,0); tone(659,0.14,'triangle',0.2,0.11); tone(784,0.22,'triangle',0.22,0.22); };
 const sWrong= ()=>{ tone(300,0.16,'sine',0.12,0); tone(240,0.2,'sine',0.12,0.08); };
 const sTap  = ()=> tone(660,0.08,'triangle',0.12);
-const sStar = ()=>{ tone(1046,0.1,'triangle',0.15,0); tone(1318,0.14,'triangle',0.15,0.08); };
+const sStar = ()=>{ tone(1046,0.1,'triangle',0.15,0); tone(1318,0.14,'triangle',0.15,0.08); tone(1568,0.18,'triangle',0.15,0.16); };
 
 /* ---------- Speech ---------- */
 let voices=[];
@@ -147,18 +180,20 @@ const speakEN = (t)=> say(t, 'en');
 let primed=false;
 function prime(){ if(primed) return; primed=true; audio(); if('speechSynthesis' in window){ try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }catch(e){} } }
 
-/* ---------- Screen nav ---------- */
+/* ---------- Screen nav / theme ---------- */
 function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', s.id===id)); }
+function applyTheme(){ document.body.classList.toggle('theme-dino', theme()==='dino'); document.body.classList.toggle('theme-pony', theme()==='pony'); }
 
 /* ============================================================
    HOME
    ============================================================ */
 function renderHome(){
+  applyTheme();
   $('#homeTitle').textContent = tt().appTitle;
-  $('#starNum').textContent = state.stars;
   $('#langBtn').textContent = state.lang==='vi' ? '🇻🇳' : '🇬🇧';
   $('#subMath').textContent = tt().subjects.math;
   $('#subEng').textContent  = tt().subjects.english;
+  updateReward();
   document.querySelectorAll('#subjectTabs .seg-btn').forEach(b=> b.classList.toggle('on', b.dataset.subject===state.subject));
   document.querySelectorAll('#profileSeg .seg-btn').forEach(b=>{
     b.classList.toggle('on', b.dataset.profile===state.profile);
@@ -168,7 +203,7 @@ function renderHome(){
   const grid = $('#gameGrid'); grid.innerHTML='';
   const cols = list.length===4 ? 2 : list.length<=3 ? list.length : 3;
   grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
-  grid.style.maxWidth = list.length===4 ? '720px' : '1040px'; // keep 2×2 from overflowing
+  grid.style.maxWidth = list.length===4 ? '720px' : '1040px';
   list.forEach(g=>{
     const c = el('button','card');
     c.style.background = `linear-gradient(160deg, ${shade(g.color,15)}, ${shade(g.color,-8)})`;
@@ -179,10 +214,49 @@ function renderHome(){
   });
 }
 
+/* ---------- Reward button + collection ---------- */
+function updateReward(){
+  if(theme()==='dino'){ $('#rbEmo').textContent='🦖'; $('#rbTxt').textContent=`${state.dino.badges}/${DINO_SET.length}`;
+    $('#rbFill').style.width = (100*state.dino.prog/DINO_UNLOCK)+'%'; }
+  else { $('#rbEmo').textContent='🦄'; $('#rbTxt').textContent=`${state.pony.pieces}/${PONY_TILES}`;
+    $('#rbFill').style.width = (100*state.pony.pieces/PONY_TILES)+'%'; }
+}
+function reward(){
+  let rev=null;
+  if(theme()==='dino'){ const d=state.dino; if(d.badges<DINO_SET.length){ d.prog++; if(d.prog>=DINO_UNLOCK){ d.prog=0; d.badges++; rev={type:'dino', item:DINO_SET[d.badges-1]}; } } }
+  else { const p=state.pony; p.pieces++; if(p.pieces>=PONY_TILES){ p.pieces=0; p.done++; rev={type:'pony', item:PONY_SET[(p.done-1)%PONY_SET.length]}; } }
+  save(); updateReward(); return rev;
+}
+function openCollection(){
+  const t=tt(), body=$('#collBody'); body.innerHTML='';
+  if(theme()==='dino'){
+    $('#collTitle').textContent=t.reward.dinoTitle;
+    const grid=el('div','coll-grid','');
+    DINO_SET.forEach((d,i)=>{ const unlocked=i<state.dino.badges;
+      const cell=el('div','badge'+(unlocked?'':' locked'),'');
+      const disc=el('div','disc', unlocked?d.e:'❓'); disc.style.background = unlocked? `linear-gradient(160deg,${pick(['#ffe3a3','#c7f5e2','#d7e3ff','#ffd6e6'])},#fff)` : '#eee';
+      cell.appendChild(disc); cell.appendChild(el('div','bname', unlocked?d[state.lang]:'???')); grid.appendChild(cell); });
+    body.appendChild(grid);
+    const hint = state.dino.badges<DINO_SET.length ? t.reward.collectHint(DINO_UNLOCK-state.dino.prog) : t.reward.allDino;
+    body.appendChild(el('div','panel-sub',hint));
+  } else {
+    $('#collTitle').textContent=t.reward.ponyTitle;
+    const cur = PONY_SET[state.pony.done % PONY_SET.length];
+    const pz=el('div','puzzle',''); pz.appendChild(el('div','pic',cur));
+    const tiles=el('div','tiles',''); tiles.style.gridTemplateColumns='repeat(3,1fr)'; tiles.style.gridTemplateRows='repeat(2,1fr)';
+    for(let i=0;i<PONY_TILES;i++){ const tile=el('div','tile'+(i<state.pony.pieces?' gone':''),''); tiles.appendChild(tile); }
+    pz.appendChild(tiles); body.appendChild(pz);
+    body.appendChild(el('div','panel-sub', t.reward.pieceHint(PONY_TILES-state.pony.pieces)));
+    if(state.pony.done>0){ body.appendChild(el('div','panel-title',t.reward.gallery));
+      const g=el('div','gallery',''); for(let i=0;i<state.pony.done;i++){ g.appendChild(el('div','g-pic',PONY_SET[i%PONY_SET.length])); } body.appendChild(g); }
+  }
+  $('#collection').classList.add('show');
+}
+
 /* ============================================================
    GAME LOOP
    ============================================================ */
-const GEN = { count:rCount, numeral:rNumeral, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords };
+const GEN = { count:rCount, feed:rFeed, add:rAdd, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords };
 let curDef=null, locked=false, playStart=0, inGame=false;
 
 function startGame(def){ curDef=def; inGame=true; armBreak(); document.body.classList.add('playing'); show('game'); nextRound(); }
@@ -190,10 +264,8 @@ function exitGame(){ inGame=false; document.body.classList.remove('playing'); tr
 
 function setPrompt(html, speakText, en){
   const p=$('#promptText'); p.innerHTML=html;
-  p.dataset.speak = speakText!=null?speakText : p.textContent;
-  p.dataset.en = en?'1':'0';
-  $('#speakBtn').classList.add('pulse');
-  en ? speakEN(p.dataset.speak) : speak(p.dataset.speak);
+  p.dataset.speak = speakText!=null?speakText : p.textContent; p.dataset.en = en?'1':'0';
+  $('#speakBtn').classList.add('pulse'); en ? speakEN(p.dataset.speak) : speak(p.dataset.speak);
 }
 $('#speakBtn').onclick = ()=>{ prime(); if(!curDef) return; const p=$('#promptText'); p.dataset.en==='1'?speakEN(p.dataset.speak):speak(p.dataset.speak); };
 
@@ -204,27 +276,24 @@ function mountChoices(items){
 }
 function handleChoice(node, it){
   if(locked) return; prime();
-  if(it.correct){
-    locked=true; node.classList.add('right');
+  if(it.correct){ locked=true; node.classList.add('right');
     document.querySelectorAll('#choices .choice').forEach(x=>{ if(x!==node) x.classList.add('dim'); });
-    sGood();
-    if(it.rightSpeakEN) speakEN(it.rightSpeakEN);
-    else speak(pick(tt().praise) + (it.rightSay? ' '+it.rightSay : ''));
-    awardStar(); celebrate();
-    setTimeout(()=>{ if(inGame) nextRound(); }, 1350);
-  } else {
-    node.classList.add('wrong','dim'); sWrong(); speak(pick(tt().tryagain));
-    setTimeout(()=>node.classList.remove('wrong'),500);
-  }
+    winRound(it);
+  } else { node.classList.add('wrong','dim'); sWrong(); speak(pick(tt().tryagain)); setTimeout(()=>node.classList.remove('wrong'),500); }
+}
+/* shared success: reward → reveal or normal celebrate → next */
+function winRound(it){ it=it||{};
+  sGood();
+  if(it.rightSpeakEN) speakEN(it.rightSpeakEN);
+  else speak(pick(tt().praise) + (it.rightSay? ' '+it.rightSay : ''));
+  const rev = reward();
+  if(rev){ showReveal(rev, ()=>{ if(inGame) nextRound(); }); }
+  else { celebrate(); setTimeout(()=>{ if(inGame) nextRound(); }, 1350); }
 }
 function nextRound(){
-  $('#speakBtn').classList.remove('pulse');
-  $('#stage').innerHTML=''; $('#choices').innerHTML='';
-  GEN[curDef.gen]();
-  maybeBreak();
+  $('#speakBtn').classList.remove('pulse'); $('#stage').innerHTML=''; $('#choices').innerHTML=''; locked=false;
+  GEN[curDef.gen](); maybeBreak();
 }
-
-/* ---------- number-choice helper ---------- */
 function numberChoices(answer, max){
   const n = cfg().choices; const set = new Set([answer]); let guard=0;
   while(set.size<n && guard++<50){ const cand = rint(Math.max(1,answer-2), Math.min(max, answer+2)); if(cand!==answer) set.add(cand); }
@@ -232,39 +301,79 @@ function numberChoices(answer, max){
   return shuffle([...set]);
 }
 
-/* ---------- GAME: Count ---------- */
+/* ---------- Count ---------- */
 function rCount(){
-  const theme=pick(THEMES), obj=pick(theme), max=cfg().countMax, n=rint(1,max);
+  const theme=pick(THEMES), obj=pick(theme), max=cfg().countMax, n=rint(1,Math.min(max,6));
   setPrompt(tt().prompt.count);
   const stage=$('#stage'); let counted=0;
   for(let i=0;i<n;i++){ const o=el('div','obj tappable',obj);
     o.onclick=()=>{ if(o.dataset.done) return; o.dataset.done=1; counted++; o.classList.add('counted'); sTap(); speak(word(counted)); };
     stage.appendChild(o); }
-  mountChoices(numberChoices(n,max).map(v=>({ node: el('button',null,String(v)), correct: v===n, rightSay: tt().hasCount(word(n)) })));
+  mountChoices(numberChoices(n,Math.min(max,9)).map(v=>({ node: el('button',null,String(v)), correct: v===n, rightSay: tt().hasCount(word(n)) })));
 }
 
-/* ---------- GAME: Numeral ---------- */
-function rNumeral(){
-  const max=cfg().numeralMax, n=rint(1,max);
-  setPrompt(tt().prompt.numeral(`<b>${n}</b>`), tt().prompt.numeral(word(n)));
-  const dots=el('div','',''); dots.style.cssText='display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:560px;';
-  for(let i=0;i<n;i++){ const d=el('div','obj','🟣'); d.style.fontSize='clamp(30px,6vw,56px)'; dots.appendChild(d); }
-  $('#stage').appendChild(dots);
-  mountChoices(numberChoices(n,max).map(v=>({ node: el('button',null,String(v)), correct: v===n })));
+/* ---------- Feed (give-N) ---------- */
+function rFeed(){
+  const N = rint(1, cfg().feedMax);
+  const food = pick(['🍖','🥩','🍃','🌿','🍎','🍪']);
+  const mascot = theme()==='dino' ? '🦖' : '🐴';
+  setPrompt(tt().prompt.feed(`<b>${N}</b>`), tt().prompt.feedSpeak(word(N)));
+  const wrap=el('div','feed-wrap','');
+  wrap.appendChild(el('div','feed-mascot',mascot));
+  const target=el('div','feed-target',''); const setT=(g)=>target.innerHTML=`${g} / <b>${N}</b>`; setT(0);
+  wrap.appendChild(target);
+  const basket=el('div','feed-basket',''); wrap.appendChild(basket);
+  const pile=el('div','feed-pile',''); const total=N + (state.profile==='toddler'?1:2);
+  let given=0;
+  for(let i=0;i<total;i++){ const f=el('div','feed-food',food);
+    f.onclick=()=>{ if(locked||f.dataset.used||given>=N) return; f.dataset.used=1; f.style.visibility='hidden';
+      given++; basket.appendChild(el('div','fed',food)); sTap(); speak(word(given)); setT(given);
+      if(given>=N){ locked=true; setTimeout(()=>winRound({}),500); } };
+    pile.appendChild(f); }
+  wrap.appendChild(pile); $('#stage').appendChild(wrap);
 }
 
-/* ---------- GAME: Shapes (en flag → English name) ---------- */
-function shapeSVG(kind,color){
-  const m={
-    circle:`<circle cx="50" cy="50" r="42" fill="${color}"/>`,
-    square:`<rect x="10" y="10" width="80" height="80" rx="8" fill="${color}"/>`,
-    triangle:`<polygon points="50,10 92,88 8,88" fill="${color}"/>`,
-    star:`<polygon points="50,6 61,38 95,38 68,59 78,92 50,72 22,92 32,59 5,38 39,38" fill="${color}"/>`,
-    heart:`<path d="M50 88 C10 58 12 20 38 20 C48 20 50 30 50 33 C50 30 52 20 62 20 C88 20 90 58 50 88 Z" fill="${color}"/>`,
-    rect:`<rect x="6" y="26" width="88" height="48" rx="8" fill="${color}"/>`
-  };
-  return `<svg viewBox="0 0 100 100" aria-hidden="true">${m[kind]}</svg>`;
+/* ---------- Add (Numberblocks) ---------- */
+function nbStack(n,color){ const s=el('div','nb-stack',''); for(let i=0;i<n;i++){ const u=el('div','nb-unit',''); u.style.background=color; s.appendChild(u);} return s; }
+function rAdd(){
+  const a=rint(1,4), b=rint(1,Math.min(4,8-a)), sum=a+b;
+  setPrompt(tt().prompt.add, tt().prompt.addSpeak(word(a),word(b)));
+  const row=el('div','nb-row','');
+  row.appendChild(nbStack(a,'#4dabf7')); row.appendChild(el('div','nb-op','+'));
+  row.appendChild(nbStack(b,'#ff6f91')); row.appendChild(el('div','nb-op','= ?'));
+  $('#stage').appendChild(row);
+  mountChoices(numberChoices(sum,10).map(v=>({ node: el('button',null,String(v)), correct: v===sum })));
 }
+
+/* ---------- Balance (measurement) ---------- */
+function rBalance(){
+  const obj=pick(['🍎','🧱','⭐','🍪','🔵','🥔']);
+  let a=rint(1,5), b=rint(1,5); while(a===b) b=rint(1,5);
+  const heavier = a>b ? 'left' : 'right';
+  const wantHeavy = Math.random()<0.5;
+  setPrompt(wantHeavy?tt().prompt.heavier:tt().prompt.lighter);
+  const scale=el('div','scale '+(heavier==='left'?'tilt-left':'tilt-right'),'');
+  scale.appendChild(el('div','post','')); scale.appendChild(el('div','base',''));
+  const beam=el('div','beam',''); scale.appendChild(beam);
+  const mkPan=(side,cnt)=>{ const pan=el('button','pan '+side,''); for(let i=0;i<cnt;i++) pan.appendChild(el('div','pi',obj)); return pan; };
+  const panL=mkPan('left',a), panR=mkPan('right',b);
+  scale.appendChild(panL); scale.appendChild(panR);
+  $('#stage').appendChild(scale);
+  const correctSide = wantHeavy ? heavier : (heavier==='left'?'right':'left');
+  [panL,panR].forEach(pan=>{ const side=pan.classList.contains('left')?'left':'right';
+    pan.onclick=()=>{ if(locked) return; prime();
+      if(side===correctSide){ locked=true; winRound({}); }
+      else { pan.classList.add('wrong'); sWrong(); speak(pick(tt().tryagain)); setTimeout(()=>pan.classList.remove('wrong'),500); } };
+  });
+}
+
+/* ---------- Shapes ---------- */
+function shapeSVG(kind,color){ const m={
+  circle:`<circle cx="50" cy="50" r="42" fill="${color}"/>`, square:`<rect x="10" y="10" width="80" height="80" rx="8" fill="${color}"/>`,
+  triangle:`<polygon points="50,10 92,88 8,88" fill="${color}"/>`,
+  star:`<polygon points="50,6 61,38 95,38 68,59 78,92 50,72 22,92 32,59 5,38 39,38" fill="${color}"/>`,
+  heart:`<path d="M50 88 C10 58 12 20 38 20 C48 20 50 30 50 33 C50 30 52 20 62 20 C88 20 90 58 50 88 Z" fill="${color}"/>`,
+  rect:`<rect x="6" y="26" width="88" height="48" rx="8" fill="${color}"/>` }; return `<svg viewBox="0 0 100 100" aria-hidden="true">${m[kind]}</svg>`; }
 function rShapes(){
   const en = curDef && curDef.en;
   const kinds=['circle','square','triangle','star','heart','rect'];
@@ -272,69 +381,56 @@ function rShapes(){
   const palette=['#ff6b6b','#4dabf7','#20c997','#f59f00','#cc5de8','#5c7cfa'];
   const name = en ? T.en.shapes[target] : tt().shapes[target];
   setPrompt(tt().prompt.shapesFind(`<b>${name}</b>`), name, en);
-  mountChoices(shuffle(chosen).map((k,i)=>{
-    const b=el('button',null,''); b.appendChild(el('div','shape',shapeSVG(k,palette[i%palette.length]))); b.style.padding='10px';
-    return { node:b, correct:k===target, rightSpeakEN: en?name:null };
-  }));
+  mountChoices(shuffle(chosen).map((k,i)=>{ const b=el('button',null,''); b.appendChild(el('div','shape',shapeSVG(k,palette[i%palette.length]))); b.style.padding='10px';
+    return { node:b, correct:k===target, rightSpeakEN: en?name:null }; }));
 }
 
-/* ---------- GAME: Big & Small ---------- */
+/* ---------- Big & Small ---------- */
 function rBigSmall(){
   const obj=pick(BIG_OBJS), n=cfg().bigCount, wantBig=Math.random()<0.5;
   setPrompt(wantBig?tt().prompt.biggest:tt().prompt.smallest);
   const sizes=[]; const base=54, step=n===2?54:40; for(let i=0;i<n;i++) sizes.push(base+i*step);
   const target = wantBig ? Math.max(...sizes) : Math.min(...sizes);
-  mountChoices(shuffle(sizes).map(sz=>{
-    const b=el('button',null,''); const o=el('div','obj',obj); o.style.fontSize=sz+'px'; b.appendChild(o);
-    b.style.background='transparent'; b.style.boxShadow='none';
-    return { node:b, correct:sz===target };
-  }));
+  mountChoices(shuffle(sizes).map(sz=>{ const b=el('button',null,''); const o=el('div','obj',obj); o.style.fontSize=sz+'px'; b.appendChild(o);
+    b.style.background='transparent'; b.style.boxShadow='none'; return { node:b, correct:sz===target }; }));
 }
 
-/* ---------- GAME: Colors (en flag → English name) ---------- */
+/* ---------- Colors ---------- */
 function rColors(){
   const en = curDef && curDef.en;
   const keys=shuffle(COLOR_KEYS).slice(0,cfg().colorCount); const target=pick(keys);
   const name = en ? T.en.colors[target] : tt().colors[target];
   setPrompt(tt().prompt.colorFind(`<b>${name}</b>`), name, en);
-  mountChoices(shuffle(keys).map(k=>{
-    const b=el('button',null,''); const dot=el('div','','');
+  mountChoices(shuffle(keys).map(k=>{ const b=el('button',null,''); const dot=el('div','','');
     dot.style.cssText=`width:clamp(80px,14vw,120px);height:clamp(80px,14vw,120px);border-radius:50%;background:${COLOR_HEX[k]};box-shadow:inset 0 -8px 14px rgba(0,0,0,.15);`;
-    b.appendChild(dot); b.style.padding='12px';
-    return { node:b, correct:k===target, rightSpeakEN: en?name:null };
-  }));
+    b.appendChild(dot); b.style.padding='12px'; return { node:b, correct:k===target, rightSpeakEN: en?name:null }; }));
 }
 
-/* ---------- GAME: Odd one out ---------- */
+/* ---------- Odd one out ---------- */
 function rOdd(){
   const pair=pick(ODD_PAIRS); const [a,b]=Math.random()<0.5?pair:[pair[1],pair[0]];
   const n=cfg().oddCount, items=[];
   for(let i=0;i<n-1;i++) items.push({e:a,correct:false}); items.push({e:b,correct:true});
   setPrompt(tt().prompt.odd);
-  mountChoices(shuffle(items).map(it=>{
-    const btn=el('button',null,''); const o=el('div','obj',it.e); o.style.fontSize='clamp(46px,9vw,86px)'; btn.appendChild(o);
-    return { node:btn, correct:it.correct };
-  }));
+  mountChoices(shuffle(items).map(it=>{ const btn=el('button',null,''); const o=el('div','obj',it.e); o.style.fontSize='clamp(46px,9vw,86px)'; btn.appendChild(o);
+    return { node:btn, correct:it.correct }; }));
 }
 
-/* ---------- GAME: Pattern ---------- */
+/* ---------- Pattern ---------- */
 function rPattern(){
   const pool=['🔴','🔵','🟡','🟢','🟣','🟠','⭐','❤️'];
   const unitLen=cfg().patternUnit, unit=shuffle(pool).slice(0,unitLen), visible=unitLen*2;
-  const seq=[]; for(let i=0;i<visible;i++) seq.push(unit[i%unitLen]);
-  const answer=unit[visible%unitLen];
+  const seq=[]; for(let i=0;i<visible;i++) seq.push(unit[i%unitLen]); const answer=unit[visible%unitLen];
   setPrompt(tt().prompt.pattern);
   const row=el('div','',''); row.style.cssText='display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;';
   seq.forEach(t=>{ const o=el('div','obj',t); o.style.fontSize='clamp(40px,8vw,74px)'; row.appendChild(o); });
   const q=el('div','obj','❓'); q.style.fontSize='clamp(40px,8vw,74px)'; q.style.opacity='.7'; row.appendChild(q);
   $('#stage').appendChild(row);
-  mountChoices(shuffle(unit).map(t=>{
-    const btn=el('button',null,''); const o=el('div','obj',t); o.style.fontSize='clamp(40px,8vw,72px)'; btn.appendChild(o);
-    return { node:btn, correct:t===answer };
-  }));
+  mountChoices(shuffle(unit).map(t=>{ const btn=el('button',null,''); const o=el('div','obj',t); o.style.fontSize='clamp(40px,8vw,72px)'; btn.appendChild(o);
+    return { node:btn, correct:t===answer }; }));
 }
 
-/* ---------- GAME: ABC ---------- */
+/* ---------- ABC ---------- */
 function rABC(){
   const pool = state.profile==='toddler' ? LETTERS_EASY : LETTERS_ALL;
   const target=pick(pool); const cap=Math.min(cfg().choices+1, pool.length);
@@ -343,33 +439,47 @@ function rABC(){
   mountChoices(shuffle([...opts]).map(L=>({ node: el('button','glyph-choice',L), correct:L===target, rightSpeakEN:L })));
 }
 
-/* ---------- GAME: First Words (listen → picture) ---------- */
+/* ---------- First Words ---------- */
 function rWords(){
   const n = state.profile==='toddler'?2:3;
   const chosen = shuffle(WORDS).slice(0,n); const target=pick(chosen);
   setPrompt(tt().prompt.wordFind, target.w, true);
-  mountChoices(shuffle(chosen).map(o=>{
-    const b=el('button',null,''); const g=el('div','obj',o.e); g.style.fontSize='clamp(56px,13vw,120px)'; b.appendChild(g);
-    return { node:b, correct:o.w===target.w, rightSpeakEN:target.w };
-  }));
+  mountChoices(shuffle(chosen).map(o=>{ const b=el('button',null,''); const g=el('div','obj',o.e); g.style.fontSize='clamp(56px,13vw,120px)'; b.appendChild(g);
+    return { node:b, correct:o.w===target.w, rightSpeakEN:target.w }; }));
 }
 
 /* ============================================================
-   REWARDS / BREAK / PARENT
+   CELEBRATIONS
    ============================================================ */
-function awardStar(){ state.stars++; save(); $('#starNum').textContent=state.stars; sStar(); }
+function confettiInto(ov){ const bits=['🎈','⭐','🎊','💛','💙','🌈','🍬','✨'];
+  for(let i=0;i<22;i++){ const c=el('div','confetti',pick(bits)); c.style.left=Math.random()*100+'%';
+    c.style.animationDuration=(1.2+Math.random()*1.2)+'s'; c.style.animationDelay=(Math.random()*0.2)+'s'; c.style.fontSize=(18+Math.random()*18)+'px'; ov.appendChild(c); } }
 function celebrate(){
   const ov=$('#celebrate'); ov.classList.add('show'); ov.innerHTML='';
-  ov.appendChild(el('div','cheer', pick(['🎉','🌟','👏','🥳','💫','🏆'])));
-  const bits=['🎈','⭐','🎊','💛','💙','🌈','🍬','✨'];
-  for(let i=0;i<22;i++){ const c=el('div','confetti',pick(bits));
-    c.style.left=Math.random()*100+'%'; c.style.animationDuration=(1.2+Math.random()*1.2)+'s'; c.style.animationDelay=(Math.random()*0.2)+'s'; c.style.fontSize=(18+Math.random()*18)+'px'; ov.appendChild(c); }
-  setTimeout(()=>{ ov.classList.remove('show'); ov.innerHTML=''; }, 1500);
+  ov.appendChild(el('div','cheer', pick(['🎉','🌟','👏','🥳','💫','🏆']))); confettiInto(ov);
+  setTimeout(()=>{ ov.classList.remove('show'); ov.innerHTML=''; }, 1450);
 }
+function showReveal(rev, cb){
+  sStar();
+  const ov=el('div','reveal',''); const card=el('div','card2','');
+  if(rev.type==='dino'){ card.innerHTML=`<div class="big">${rev.item.e}</div><div class="rv-title">${tt().reward.newBadge}</div><div class="rv-sub">${rev.item[state.lang]}</div>`; speak(tt().reward.newBadge); }
+  else { card.innerHTML=`<div class="big">${rev.item}</div><div class="rv-title">${tt().reward.picDone}</div>`; speak(tt().reward.picDone); }
+  ov.appendChild(card); confettiInto(ov); document.body.appendChild(ov);
+  const done=()=>{ if(ov._done) return; ov._done=1; ov.remove(); cb&&cb(); };
+  ov.onclick=done; setTimeout(done, 2400);
+}
+
+/* ============================================================
+   BREAK / PARENT / COLLECTION wiring
+   ============================================================ */
 function armBreak(){ playStart=Date.now(); }
 function maybeBreak(){ if(!inGame || !state.breakMins) return; if(Date.now()-playStart >= state.breakMins*60000) showBreak(); }
 function showBreak(){ const t=tt(); $('#breakTitle').textContent=t.breakT; $('#breakSub').textContent=t.breakS; $('#breakOk').textContent=t.breakOk; $('#breakScreen').classList.add('show'); speak(t.breakT); }
 $('#breakOk').onclick=()=>{ $('#breakScreen').classList.remove('show'); armBreak(); };
+
+$('#rewardBtn').onclick=()=>{ prime(); sTap(); openCollection(); };
+$('#collClose').onclick=()=>{ $('#collection').classList.remove('show'); };
+$('#collection').addEventListener('click',(e)=>{ if(e.target===$('#collection')) $('#collection').classList.remove('show'); });
 
 function openParentGate(){
   const t=tt(); $('#parentPanel').classList.add('show');
@@ -394,13 +504,11 @@ function syncParent(){
 document.querySelectorAll('#langSeg .seg-btn').forEach(b=> b.onclick=()=>{ state.lang=b.dataset.lang; save(); document.documentElement.lang=state.lang; syncParent(); });
 document.querySelectorAll('#voiceSeg .seg-btn').forEach(b=> b.onclick=()=>{ state.voice=(b.dataset.voice==='on'); save(); syncParent(); if(state.voice) speak(pick(tt().praise)); });
 document.querySelectorAll('#breakSeg .seg-btn').forEach(b=> b.onclick=()=>{ state.breakMins=+b.dataset.break; save(); armBreak(); syncParent(); });
-$('#resetStars').onclick=()=>{ state.stars=0; save(); $('#starNum').textContent=0; };
+$('#resetStars').onclick=()=>{ state.dino={badges:0,prog:0}; state.pony={done:0,pieces:0}; save(); updateReward(); };
 $('#parentClose').onclick=()=>{ $('#parentPanel').classList.remove('show'); renderHome(); };
 $('#parentPanel').addEventListener('click', (e)=>{ if(e.target===$('#parentPanel')){ $('#parentPanel').classList.remove('show'); renderHome(); } });
 
-/* ============================================================
-   WIRING
-   ============================================================ */
+/* ---------- Top nav ---------- */
 $('#backBtn').onclick=()=>{ sTap(); exitGame(); };
 $('#parentBtn').onclick=()=>{ prime(); openParentGate(); };
 $('#langBtn').onclick=()=>{ state.lang = state.lang==='vi'?'en':'vi'; save(); document.documentElement.lang=state.lang; renderHome(); if(inGame) exitGame(); };

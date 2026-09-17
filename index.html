@@ -21,7 +21,11 @@
       <button class="seg-btn" data-profile="toddler">🐣 <span class="lbl"><span class="lbl-main">Bé nhỏ</span><span class="seg-sub">2–3</span></span></button>
       <button class="seg-btn" data-profile="preschool">🧒 <span class="lbl"><span class="lbl-main">Bé lớn</span><span class="seg-sub">4–5</span></span></button>
     </div>
-    <div class="star-count" id="starCount" aria-label="Số sao">⭐ <span id="starNum">0</span></div>
+    <button class="reward-btn" id="rewardBtn" aria-label="Bộ sưu tập">
+      <span class="rb-emo" id="rbEmo">🦖</span>
+      <span class="rb-txt" id="rbTxt">0</span>
+      <span class="rb-bar"><span class="rb-fill" id="rbFill"></span></span>
+    </button>
     <div class="topbar-right">
       <button class="lang-btn" id="langBtn" aria-label="Đổi ngôn ngữ">🇻🇳</button>
       <button class="parent-btn" id="parentBtn" aria-label="Ba mẹ">⚙️</button>
@@ -63,6 +67,15 @@
       <div class="panel-title" id="breakTitle">Nghỉ một chút nhé!</div>
       <div class="panel-sub" id="breakSub">Con chơi giỏi lắm. Đứng dậy vươn vai nào.</div>
       <button class="big-action" id="breakOk">Chơi tiếp</button>
+    </div>
+  </div>
+
+  <!-- Collection (dino album / pony puzzle) -->
+  <div id="collection" class="overlay center-overlay">
+    <div class="panel">
+      <div class="panel-title" id="collTitle"></div>
+      <div id="collBody"></div>
+      <button class="big-action" id="collClose">Xong</button>
     </div>
   </div>
 
