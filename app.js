@@ -8,7 +8,7 @@
 'use strict';
 
 /* ---------- State ---------- */
-const DEFAULTS = { profile:'toddler', lang:'vi', subject:'math', voice:true, breakMins:15,
+const DEFAULTS = { profile:'toddler', lang:'vi', subject:'math', voice:true, breakMins:15, matchDiff:'easy',
   dino:{ badges:0, prog:0 }, pony:{ done:0, pieces:0 } };
 const state = Object.assign({}, DEFAULTS, load());
 // backfill nested objects if an older save existed
@@ -25,16 +25,19 @@ const NUM = {
 const T = {
   vi:{
     appTitle:'Bé Học',
-    subjects:{math:'Toán & Tư duy', english:'Tiếng Anh'},
+    subjects:{math:'Toán & Tư duy', english:'Tiếng Anh', play:'Chơi vui'},
     profiles:{toddler:'Bé nhỏ', preschool:'Bé lớn'},
     games:{count:'Đếm', feed:'Cho ăn', numeral:'Học số', add:'Phép cộng', balance:'Cân nặng',
            shapes:'Hình khối', bigsmall:'To & Nhỏ', colors:'Màu sắc', odd:'Tìm cái khác', pattern:'Tiếp theo',
-           abc:'Chữ cái ABC', words:'Từ vựng', colorsEN:'Màu sắc', shapesEN:'Hình khối'},
+           abc:'Chữ cái ABC', words:'Từ vựng', colorsEN:'Màu sắc', shapesEN:'Hình khối',
+           match:'Ghép hình', trace:'Tập viết số'},
+    diff:{easy:'Dễ', mid:'Vừa', hard:'Khó'},
     prompt:{
       count:'Đếm xem có bao nhiêu?',
       feed:(n)=>`Cho bạn ấy ăn ${n} cái nào!`, feedSpeak:(w)=>`Cho ăn ${w} cái`,
-      add:'Có tất cả bao nhiêu khối?', addSpeak:(a,b)=>`${a} cộng ${b} bằng mấy?`,
+      add:'Có tất cả bao nhiêu khối?', addSpeak:(a,b)=>`${a} cộng ${b} bằng mấy?`, addCombine:'Chạm để ghép 2 khối lại!',
       balance:'Thêm cho hai bên bằng nhau!', balanceSpeak:'Thêm cho hai bên bằng nhau', balanceHint:'Chạm để thêm — chạm vật trên đĩa để bớt',
+      match:'Lật tìm 2 hình giống nhau!', matchSpeak:'Tìm hai hình giống nhau', trace:(n)=>`Tô theo số ${n}`, traceSpeak:(w)=>`Viết số ${w}`, traceHint:'Đưa ngón tay theo nét',
       shapesFind:(s)=>`Chạm vào hình ${s}`,
       biggest:'Chạm vào cái TO nhất', smallest:'Chạm vào cái NHỎ nhất',
       colorFind:(c)=>`Chạm vào màu ${c}`,
@@ -56,16 +59,19 @@ const T = {
   },
   en:{
     appTitle:'Little Learners',
-    subjects:{math:'Math & Thinking', english:'English'},
+    subjects:{math:'Math & Thinking', english:'English', play:'Fun'},
     profiles:{toddler:'Little one', preschool:'Big kid'},
     games:{count:'Count', feed:'Feed', numeral:'Numbers', add:'Add', balance:'Weigh',
            shapes:'Shapes', bigsmall:'Big & Small', colors:'Colors', odd:'Odd one out', pattern:'What’s next',
-           abc:'ABC Letters', words:'First Words', colorsEN:'Colors', shapesEN:'Shapes'},
+           abc:'ABC Letters', words:'First Words', colorsEN:'Colors', shapesEN:'Shapes',
+           match:'Memory', trace:'Trace'},
+    diff:{easy:'Easy', mid:'Medium', hard:'Hard'},
     prompt:{
       count:'How many are there?',
       feed:(n)=>`Feed your friend ${n}!`, feedSpeak:(w)=>`Feed ${w}`,
-      add:'How many blocks altogether?', addSpeak:(a,b)=>`${a} plus ${b} is?`,
+      add:'How many blocks altogether?', addSpeak:(a,b)=>`${a} plus ${b} is?`, addCombine:'Tap to join the two blocks!',
       balance:'Add to make both sides equal!', balanceSpeak:'Make both sides equal', balanceHint:'Tap to add — tap an item on the tray to remove',
+      match:'Flip to find 2 that match!', matchSpeak:'Find two that match', trace:(n)=>`Trace the number ${n}`, traceSpeak:(w)=>`Write ${w}`, traceHint:'Move your finger along the line',
       shapesFind:(s)=>`Tap the ${s}`,
       biggest:'Tap the BIGGEST one', smallest:'Tap the SMALLEST one',
       colorFind:(c)=>`Tap the ${c} one`,
@@ -114,6 +120,8 @@ const GAMES = [
   { id:'colors',  gen:'colors',  icon:'🎨', color:'#c77dff', subject:'math', profiles:['toddler','preschool'] },
   { id:'odd',     gen:'odd',     icon:'🔍', color:'#ffb14e', subject:'math', profiles:['toddler'] },
   { id:'pattern', gen:'pattern', icon:'🧩', color:'#39b7e5', subject:'math', profiles:['preschool'] },
+  { id:'match',   gen:'match',   icon:'🃏', color:'#ff8fab', subject:'play', profiles:['toddler','preschool'] },
+  { id:'trace',   gen:'trace',   icon:'✏️', color:'#5cc8b8', subject:'play', profiles:['toddler','preschool'] },
   { id:'abc',     gen:'abc',     icon:'🔤', color:'#8a7cff', subject:'english', profiles:['toddler','preschool'] },
   { id:'words',   gen:'words',   icon:'🐾', color:'#3ec9a7', subject:'english', profiles:['toddler','preschool'] },
   { id:'colorsEN',gen:'colors',  icon:'🌈', color:'#ff6f91', subject:'english', profiles:['toddler','preschool'], en:true },
@@ -145,6 +153,47 @@ const WORDS = [
 ];
 const LETTERS_EASY = ['A','B','C','D','E','F'];
 const LETTERS_ALL  = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','R','S','T','U','V','W'];
+const MATCH_POOL = { dino:['🦖','🦕','🥚','🦴','🌋','🐊','🐢','🦎','🐉','🦣'], pony:['🦄','🐴','🌈','🌸','⭐','🦋','💖','🎀','🍭','☁️'] };
+/* single-stroke-ish digit guide paths in a 0..100 box (for tracing) */
+const DIGIT_D = {
+  0:'M50 20 Q32 20 32 50 Q32 80 50 80 Q68 80 68 50 Q68 20 50 20',
+  1:'M40 30 L52 20 L52 82',
+  2:'M32 34 Q48 12 66 30 Q72 48 42 66 L34 82 L70 82',
+  3:'M34 26 Q64 12 62 38 Q60 50 46 50 Q64 50 64 66 Q60 86 32 76',
+  4:'M60 20 L32 60 L72 60 M58 40 L58 82',
+  5:'M64 22 L40 22 L38 48 Q64 40 64 64 Q60 84 34 78',
+  6:'M62 24 Q40 26 38 54 Q36 82 56 82 Q70 80 68 62 Q64 48 44 52',
+  7:'M32 24 L70 24 L46 82',
+  8:'M50 48 Q30 46 32 30 Q36 16 50 18 Q66 20 66 33 Q66 46 50 48 Q30 50 30 66 Q32 84 50 84 Q70 84 70 66 Q68 50 50 48',
+  9:'M62 42 Q62 20 44 22 Q30 24 32 40 Q34 54 54 50 Q62 48 62 40 M62 42 L58 82'
+};
+/* hand-drawn SVG mascots (chibi) */
+function svgDino(){ return `<svg viewBox="0 0 100 100" class="mascot-svg" aria-hidden="true">
+  <path d="M22 72 Q4 70 9 54 Q17 62 28 62 Z" fill="#3fb877"/>
+  <ellipse cx="50" cy="64" rx="30" ry="26" fill="#4ecb8b"/>
+  <path d="M40 40 l6 -13 6 13 Z M52 41 l6 -13 6 13 Z M64 44 l5 -11 5 11 Z" fill="#2fa96f"/>
+  <ellipse cx="50" cy="72" rx="17" ry="14" fill="#c4f2d9"/>
+  <rect x="38" y="82" width="11" height="15" rx="5" fill="#3fb877"/><rect x="55" y="82" width="11" height="15" rx="5" fill="#3fb877"/>
+  <circle cx="66" cy="42" r="24" fill="#4ecb8b"/>
+  <circle cx="60" cy="40" r="8.5" fill="#fff"/><circle cx="62" cy="41" r="4.2" fill="#22223b"/>
+  <circle cx="76" cy="40" r="7.5" fill="#fff"/><circle cx="78" cy="41" r="3.7" fill="#22223b"/>
+  <circle cx="55" cy="52" r="4" fill="#ff9ec7" opacity=".55"/>
+  <path d="M60 54 Q68 60 78 53" stroke="#2f8f5f" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+</svg>`; }
+function svgPony(){ return `<svg viewBox="0 0 100 100" class="mascot-svg" aria-hidden="true">
+  <path d="M22 60 Q6 58 10 82 Q20 74 30 76 Z" fill="#ffb3d9"/>
+  <ellipse cx="48" cy="64" rx="29" ry="23" fill="#ffd9ec"/>
+  <rect x="34" y="80" width="10" height="16" rx="4" fill="#ffc2e2"/><rect x="54" y="80" width="10" height="16" rx="4" fill="#ffc2e2"/>
+  <ellipse cx="70" cy="46" rx="21" ry="18" fill="#ffe6f2"/>
+  <path d="M78 26 L82 8 L86 26 Z" fill="#ffd23f"/>
+  <path d="M56 30 Q64 22 74 26 Q66 34 72 42 Q62 38 58 46 Q54 36 56 30 Z" fill="#7c83ff"/>
+  <path d="M58 34 Q66 30 73 33" stroke="#ff6f91" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M60 40 Q68 38 74 41" stroke="#3ec9a7" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <circle cx="78" cy="46" r="6.5" fill="#fff"/><circle cx="79" cy="47" r="3.3" fill="#5b3a5b"/>
+  <circle cx="66" cy="52" r="4" fill="#ff8fbf" opacity=".6"/>
+  <path d="M60 56 Q66 60 72 56" stroke="#c76" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+</svg>`; }
+const mascotSVG = ()=> theme()==='dino' ? svgDino() : svgPony();
 
 /* ---------- Utils ---------- */
 const $ = (s)=>document.querySelector(s);
@@ -197,10 +246,12 @@ function renderScenery(){
    ============================================================ */
 function renderHome(){
   applyTheme();
+  const hm=$('#homeMascot'); if(hm) hm.innerHTML=mascotSVG();
   $('#homeTitle').textContent = tt().appTitle;
   $('#langBtn').textContent = state.lang==='vi' ? '🇻🇳' : '🇬🇧';
   $('#subMath').textContent = tt().subjects.math;
   $('#subEng').textContent  = tt().subjects.english;
+  $('#subPlay').textContent = tt().subjects.play;
   updateReward();
   document.querySelectorAll('#subjectTabs .seg-btn').forEach(b=> b.classList.toggle('on', b.dataset.subject===state.subject));
   document.querySelectorAll('#profileSeg .seg-btn').forEach(b=>{
@@ -264,7 +315,7 @@ function openCollection(){
 /* ============================================================
    GAME LOOP
    ============================================================ */
-const GEN = { count:rCount, feed:rFeed, add:rAdd, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords };
+const GEN = { count:rCount, feed:rFeed, add:rAdd, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords, match:rMatch, trace:rTrace };
 let curDef=null, locked=false, playStart=0, inGame=false;
 
 function startGame(def){ curDef=def; inGame=true; armBreak(); document.body.classList.add('playing'); show('game'); nextRound(); }
@@ -324,10 +375,9 @@ function rCount(){
 function rFeed(){
   const N = rint(1, cfg().feedMax);
   const food = pick(['🍖','🥩','🍃','🌿','🍎','🍪']);
-  const mascot = theme()==='dino' ? '🦖' : '🐴';
   setPrompt(tt().prompt.feed(`<b>${N}</b>`), tt().prompt.feedSpeak(word(N)));
   const wrap=el('div','feed-wrap','');
-  wrap.appendChild(el('div','feed-mascot',mascot));
+  const fm=el('div','feed-mascot',''); fm.innerHTML=mascotSVG(); wrap.appendChild(fm);
   const target=el('div','feed-target',''); const setT=(g)=>target.innerHTML=`${g} / <b>${N}</b>`; setT(0);
   wrap.appendChild(target);
   const basket=el('div','feed-basket',''); wrap.appendChild(basket);
@@ -345,12 +395,92 @@ function rFeed(){
 function nbStack(n,color){ const s=el('div','nb-stack',''); for(let i=0;i<n;i++){ const u=el('div','nb-unit',''); u.style.background=color; s.appendChild(u);} return s; }
 function rAdd(){
   const a=rint(1,4), b=rint(1,Math.min(4,8-a)), sum=a+b;
-  setPrompt(tt().prompt.add, tt().prompt.addSpeak(word(a),word(b)));
+  setPrompt(tt().prompt.addCombine, tt().prompt.addSpeak(word(a),word(b)));
   const row=el('div','nb-row','');
-  row.appendChild(nbStack(a,'#4dabf7')); row.appendChild(el('div','nb-op','+'));
-  row.appendChild(nbStack(b,'#ff6f91')); row.appendChild(el('div','nb-op','= ?'));
+  const sa=nbStack(a,'#4dabf7'), op=el('div','nb-op','+'), sb=nbStack(b,'#ff6f91');
+  sa.style.cursor='pointer'; sb.style.cursor='pointer';
+  row.appendChild(sa); row.appendChild(op); row.appendChild(sb);
   $('#stage').appendChild(row);
-  mountChoices(numberChoices(sum,10).map(v=>({ node: el('button',null,String(v)), correct: v===sum })));
+  let combined=false;
+  const combine=()=>{ if(combined||locked) return; combined=true; sTap();
+    op.style.display='none';
+    [...sb.children].forEach(u=>{ u.classList.add('nb-merge'); sa.appendChild(u); });
+    sb.remove();
+    setPrompt(tt().prompt.add);                       // now: how many altogether?
+    mountChoices(numberChoices(sum,10).map(v=>({ node: el('button',null,String(v)), correct: v===sum })));
+  };
+  sa.onclick=combine; sb.onclick=combine;
+}
+
+/* ---------- Memory match (flip 2, selectable difficulty) ---------- */
+function rMatch(){
+  const pool = MATCH_POOL[theme()];
+  const diffs = state.profile==='toddler'
+    ? [{k:'easy',pairs:2,cols:2},{k:'mid',pairs:3,cols:3},{k:'hard',pairs:4,cols:4}]
+    : [{k:'easy',pairs:3,cols:3},{k:'mid',pairs:6,cols:4},{k:'hard',pairs:8,cols:4}];
+  if(!diffs.find(d=>d.k===state.matchDiff)) state.matchDiff='easy';
+  setPrompt(tt().prompt.match, tt().prompt.matchSpeak);
+  const stage=$('#stage');
+  const col=el('div',''); col.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;';
+  const sel=el('div','match-diff','');
+  diffs.forEach(d=>{ const btn=el('button','db'+(d.k===state.matchDiff?' on':''), tt().diff[d.k]);
+    btn.onclick=()=>{ state.matchDiff=d.k; save(); document.querySelectorAll('.match-diff .db').forEach(x=>x.classList.toggle('on',x===btn)); deal(); };
+    sel.appendChild(btn); });
+  col.appendChild(sel);
+  const gridWrap=el('div','',''); col.appendChild(gridWrap);
+  stage.appendChild(col);
+  let first=null, busy=false, matched=0, totalPairs=0;
+  function deal(){
+    const d=diffs.find(x=>x.k===state.matchDiff)||diffs[0]; totalPairs=d.pairs; matched=0; first=null; busy=false; locked=false;
+    const faces=shuffle(pool).slice(0,d.pairs);
+    const cards=shuffle([...faces,...faces]);
+    const grid=el('div','match-grid',''); grid.style.gridTemplateColumns=`repeat(${d.cols},1fr)`;
+    grid.style.width=`min(90vw, ${d.cols*120}px)`;
+    cards.forEach(face=>{
+      const card=el('div','mcard','');
+      card.innerHTML=`<div class="inner"><div class="mface mback">${theme()==='dino'?'🦖':'🦄'}</div><div class="mface mfront">${face}</div></div>`;
+      card.dataset.face=face;
+      card.onclick=()=>{ if(busy||locked||card.classList.contains('flip')||card.classList.contains('done')) return;
+        card.classList.add('flip'); sTap(); prime();
+        if(!first){ first=card; return; }
+        busy=true;
+        if(first.dataset.face===card.dataset.face){
+          const f=first; setTimeout(()=>{ f.classList.add('done'); card.classList.add('done'); matched++; sStar(); busy=false;
+            if(matched===totalPairs){ locked=true; setTimeout(()=>winRound({}),550); } },350); first=null;
+        } else { const f=first; first=null; setTimeout(()=>{ f.classList.remove('flip'); card.classList.remove('flip'); busy=false; },850); }
+      };
+      grid.appendChild(card);
+    });
+    gridWrap.innerHTML=''; gridWrap.appendChild(grid);
+  }
+  deal();
+}
+
+/* ---------- Number tracing (finger writing) ---------- */
+function rTrace(){
+  const pool = state.profile==='toddler' ? [1,2,3] : [1,2,3,4,5,6,7,8,9];
+  const n = pick(pool);
+  setPrompt(tt().prompt.trace(`<b>${n}</b>`), tt().prompt.traceSpeak(word(n)));
+  const NS='http://www.w3.org/2000/svg';
+  const wrap=el('div','trace-wrap',''); const box=el('div','trace-box','');
+  const svg=document.createElementNS(NS,'svg'); svg.setAttribute('viewBox','0 0 100 100');
+  svg.innerHTML=`<defs><linearGradient id="tgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#ff6f91"/></linearGradient></defs>`;
+  const guide=document.createElementNS(NS,'path'); guide.setAttribute('d',DIGIT_D[n]); guide.setAttribute('class','tc-guide'); svg.appendChild(guide);
+  const userPath=document.createElementNS(NS,'path'); userPath.setAttribute('class','tc-fill'); userPath.setAttribute('d',''); svg.appendChild(userPath);
+  box.appendChild(svg); wrap.appendChild(box); wrap.appendChild(el('div','bal-hint', tt().prompt.traceHint));
+  $('#stage').appendChild(wrap);
+  const total=guide.getTotalLength(); const steps=Math.max(10,Math.round(total/6)); const pts=[];
+  for(let i=0;i<=steps;i++){ const q=guide.getPointAtLength(total*i/steps); const dot=document.createElementNS(NS,'circle');
+    dot.setAttribute('cx',q.x); dot.setAttribute('cy',q.y); dot.setAttribute('r', i===0?4.2:2.6); dot.setAttribute('class', i===0?'tc-start':'tc-dot'); svg.appendChild(dot);
+    pts.push({x:q.x,y:q.y,hit:false,el:dot}); }
+  let drawing=false, hit=0, dstr='';
+  const toSvg=(ev)=>{ const r=box.getBoundingClientRect(); return {x:(ev.clientX-r.left)/r.width*100, y:(ev.clientY-r.top)/r.height*100}; };
+  const check=(x,y)=>{ pts.forEach(p=>{ if(!p.hit && Math.hypot(p.x-x,p.y-y)<11){ p.hit=true; hit++; p.el.classList.add('hit'); } });
+    if(hit>=Math.round(pts.length*0.7) && !locked){ locked=true; userPath.setAttribute('d',DIGIT_D[n]); sStar(); setTimeout(()=>winRound({}),500); } };
+  box.addEventListener('pointerdown',(ev)=>{ if(locked)return; drawing=true; const p=toSvg(ev); dstr=`M${p.x} ${p.y}`; userPath.setAttribute('d',dstr); check(p.x,p.y); ev.preventDefault(); });
+  box.addEventListener('pointermove',(ev)=>{ if(!drawing||locked)return; const p=toSvg(ev); dstr+=` L${p.x} ${p.y}`; userPath.setAttribute('d',dstr); check(p.x,p.y); ev.preventDefault(); });
+  const stop=()=>{ drawing=false; };
+  box.addEventListener('pointerup',stop); box.addEventListener('pointerleave',stop); box.addEventListener('pointercancel',stop);
 }
 
 /* ---------- Balance: make both sides EQUAL (drag/tap beads in) ---------- */
