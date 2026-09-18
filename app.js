@@ -182,7 +182,15 @@ function prime(){ if(primed) return; primed=true; audio(); if('speechSynthesis' 
 
 /* ---------- Screen nav / theme ---------- */
 function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', s.id===id)); }
-function applyTheme(){ document.body.classList.toggle('theme-dino', theme()==='dino'); document.body.classList.toggle('theme-pony', theme()==='pony'); }
+function applyTheme(){ document.body.classList.toggle('theme-dino', theme()==='dino'); document.body.classList.toggle('theme-pony', theme()==='pony'); renderScenery(); }
+function renderScenery(){
+  const box=$('#scenery'); if(!box) return; box.innerHTML='';
+  const items = theme()==='dino' ? ['🌿','🌴','🦴','🌋','🥚','🦕'] : ['☁️','🌈','⭐','🌸','💗','🦋'];
+  const spots=[[5,16],[89,10],[10,78],[92,74],[49,88],[80,38],[18,44],[70,66]];
+  spots.forEach((s,i)=>{ const d=el('div','sc',items[i%items.length]);
+    d.style.left=s[0]+'%'; d.style.top=s[1]+'%'; d.style.fontSize=(42+(i%3)*24)+'px';
+    d.style.transform='rotate('+(((i*37)%40)-20)+'deg)'; d.style.animationDelay=(i*0.5)+'s'; box.appendChild(d); });
+}
 
 /* ============================================================
    HOME
