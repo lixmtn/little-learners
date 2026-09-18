@@ -34,7 +34,7 @@ const T = {
       count:'Đếm xem có bao nhiêu?',
       feed:(n)=>`Cho bạn ấy ăn ${n} cái nào!`, feedSpeak:(w)=>`Cho ăn ${w} cái`,
       add:'Có tất cả bao nhiêu khối?', addSpeak:(a,b)=>`${a} cộng ${b} bằng mấy?`,
-      heavier:'Chạm bên NẶNG hơn', lighter:'Chạm bên NHẸ hơn',
+      balance:'Thêm cho hai bên bằng nhau!', balanceSpeak:'Thêm cho hai bên bằng nhau', balanceHint:'Chạm để thêm — chạm vật trên đĩa để bớt',
       shapesFind:(s)=>`Chạm vào hình ${s}`,
       biggest:'Chạm vào cái TO nhất', smallest:'Chạm vào cái NHỎ nhất',
       colorFind:(c)=>`Chạm vào màu ${c}`,
@@ -65,7 +65,7 @@ const T = {
       count:'How many are there?',
       feed:(n)=>`Feed your friend ${n}!`, feedSpeak:(w)=>`Feed ${w}`,
       add:'How many blocks altogether?', addSpeak:(a,b)=>`${a} plus ${b} is?`,
-      heavier:'Tap the HEAVIER side', lighter:'Tap the LIGHTER side',
+      balance:'Add to make both sides equal!', balanceSpeak:'Make both sides equal', balanceHint:'Tap to add — tap an item on the tray to remove',
       shapesFind:(s)=>`Tap the ${s}`,
       biggest:'Tap the BIGGEST one', smallest:'Tap the SMALLEST one',
       colorFind:(c)=>`Tap the ${c} one`,
@@ -345,26 +345,41 @@ function rAdd(){
   mountChoices(numberChoices(sum,10).map(v=>({ node: el('button',null,String(v)), correct: v===sum })));
 }
 
-/* ---------- Balance (measurement) ---------- */
+/* ---------- Balance: make both sides EQUAL (drag/tap beads in) ---------- */
 function rBalance(){
-  const obj=pick(['🍎','🧱','⭐','🍪','🔵','🥔']);
-  let a=rint(1,5), b=rint(1,5); while(a===b) b=rint(1,5);
-  const heavier = a>b ? 'left' : 'right';
-  const wantHeavy = Math.random()<0.5;
-  setPrompt(wantHeavy?tt().prompt.heavier:tt().prompt.lighter);
-  const scale=el('div','scale '+(heavier==='left'?'tilt-left':'tilt-right'),'');
+  const obj = pick(['🍎','🫘','🧱','⭐','🔵','🍪']);       // one consistent object per round
+  const L = rint(2, state.profile==='preschool' ? 6 : 4); // fixed left count (the target)
+  setPrompt(tt().prompt.balance, tt().prompt.balanceSpeak);
+  const wrap = el('div','','');
+  const scale = el('div','scale','');
   scale.appendChild(el('div','post','')); scale.appendChild(el('div','base',''));
-  const beam=el('div','beam',''); scale.appendChild(beam);
-  const mkPan=(side,cnt)=>{ const pan=el('button','pan '+side,''); for(let i=0;i<cnt;i++) pan.appendChild(el('div','pi',obj)); return pan; };
-  const panL=mkPan('left',a), panR=mkPan('right',b);
+  scale.appendChild(el('div','beam',''));
+  const panL = el('div','pan left',''), panR = el('div','pan right','');
+  const lblL = el('div','pan-count',String(L)), lblR = el('div','pan-count','0');
+  panL.appendChild(lblL); panR.appendChild(lblR);
+  for(let i=0;i<L;i++) panL.appendChild(el('div','pi',obj));
   scale.appendChild(panL); scale.appendChild(panR);
-  $('#stage').appendChild(scale);
-  const correctSide = wantHeavy ? heavier : (heavier==='left'?'right':'left');
-  [panL,panR].forEach(pan=>{ const side=pan.classList.contains('left')?'left':'right';
-    pan.onclick=()=>{ if(locked) return; prime();
-      if(side===correctSide){ locked=true; winRound({}); }
-      else { pan.classList.add('wrong'); sWrong(); speak(pick(tt().tryagain)); setTimeout(()=>pan.classList.remove('wrong'),500); } };
-  });
+  wrap.appendChild(scale);
+  wrap.appendChild(el('div','bal-hint', tt().prompt.balanceHint));
+
+  let right = 0;
+  const update = ()=>{
+    lblR.textContent = String(right);
+    scale.classList.remove('tilt-left','tilt-right','balanced');
+    if(right < L) scale.classList.add('tilt-left');        // left heavier → dips left
+    else if(right > L) scale.classList.add('tilt-right');
+    else scale.classList.add('balanced');
+  };
+  const removeOne = (pi)=>{ if(locked) return; pi.remove(); right--; sTap(); update(); };
+  const addOne = ()=>{ const pi = el('div','pi',obj); pi.onclick = ()=> removeOne(pi); panR.insertBefore(pi, null); right++; sTap(); speak(word(right)); update();
+    if(right===L){ locked=true; update(); sStar(); setTimeout(()=>winRound({}), 750); } };
+
+  const pile = el('div','bal-pile','');
+  const supply = L + 2;
+  for(let i=0;i<supply;i++){ const f = el('div','bal-src',obj); f.onclick = ()=>{ if(locked) return; addOne(); }; pile.appendChild(f); }
+  wrap.appendChild(pile);
+  $('#stage').appendChild(wrap);
+  update();
 }
 
 /* ---------- Shapes ---------- */

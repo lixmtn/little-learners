@@ -205,6 +205,19 @@ body.theme-pony{ background:
 .scale .post{ position:absolute; top:50px; left:50%; transform:translateX(-50%); width:14px; height:120px; border-radius:8px; background:#8a6bd6; }
 .scale .base{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:150px; height:18px; border-radius:10px; background:#7a5bc6; }
 .scale .pan:active{ transform:scale(.96); }
+/* make-equal balance: count badges, level/glow when balanced, removable items */
+.scale .pan{ position:absolute; }
+.pan-count{ position:absolute; top:-34px; left:50%; transform:translateX(-50%); font-size:22px; font-weight:900; color:var(--brand);
+  background:#fff; border-radius:999px; padding:2px 14px; box-shadow:0 3px 8px rgba(0,0,0,.14); }
+.scale .pi{ animation:pop .3s ease; cursor:pointer; }
+.scale.balanced .beam{ transform:translateX(-50%) rotate(0deg)!important; }
+.scale.balanced .pan{ transform:translateY(0)!important; box-shadow:0 0 0 5px #34d39966, 0 10px 0 rgba(120,90,190,.14), 0 12px 22px rgba(60,40,120,.14); animation:balbounce .5s ease; }
+@keyframes balbounce{0%,100%{}40%{transform:translateY(-8px)!important}}
+.bal-hint{ text-align:center; font-size:16px; font-weight:800; color:var(--muted); margin-top:2px; }
+.bal-pile{ display:flex; flex-wrap:wrap; gap:clamp(6px,1.6vw,14px); justify-content:center; margin-top:6px; }
+.bal-src{ font-size:clamp(38px,7vw,60px); transition:transform .12s; cursor:pointer; }
+.bal-src:active{ transform:scale(1.3); }
+.bal-src.used{ visibility:hidden; }
 
 /* ===== Feed the dino (give-N) ===== */
 .feed-wrap{ display:flex; flex-direction:column; align-items:center; gap:14px; }
