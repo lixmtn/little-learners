@@ -89,6 +89,9 @@ body.playing #profileSeg{visibility:hidden;} /* back button sits here during a g
 @keyframes pulse{50%{transform:scale(1.09); box-shadow:0 8px 24px rgba(108,92,231,.6);}}
 .prompt-text{font-size:clamp(24px,3.6vw,40px); font-weight:900; text-align:center;}
 .prompt-text b{color:var(--brand);}
+.prompt-text .eq{ letter-spacing:.02em; }
+.prompt-text .q{ color:#e64980; }
+.prompt-text .q.hi{ color:var(--good); animation:rightpop .5s; }
 
 .play{ flex:1; display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:clamp(14px,3vh,44px); min-height:0; padding-bottom:6px; }
 .stage{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:clamp(10px,2vw,26px); padding:6px; min-height:0; }

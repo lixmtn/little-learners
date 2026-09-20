@@ -38,6 +38,7 @@ const T = {
       add:'Có tất cả bao nhiêu khối?', addSpeak:(a,b)=>`${a} cộng ${b} bằng mấy?`, addCombine:'Chạm để ghép 2 khối lại!',
       addDrag:'Kéo 2 tháp khối lại với nhau!', addEq:(s)=>`Bằng ${s}!`,
       sub:(m)=>`Bớt đi ${m} khối`, subSpeak:(m)=>`Bớt đi ${m} khối`, subHint:'Chạm khối để bỏ ra',
+      subEq:(n,m)=>`${n} bớt ${m} bằng mấy?`, subCount:'Đếm lại còn mấy khối?', subPick:'Còn lại mấy khối?',
       flashStudy:'Nhìn kỹ các ô sáng!', flashRecall:'Ô nào vừa sáng? Chạm vào!',
       balance:'Thêm cho hai bên bằng nhau!', balanceSpeak:'Thêm cho hai bên bằng nhau', balanceHint:'Chạm để thêm — chạm vật trên đĩa để bớt',
       match:'Lật tìm 2 hình giống nhau!', matchSpeak:'Tìm hai hình giống nhau', trace:(n)=>`Tô theo số ${n}`, traceSpeak:(w)=>`Viết số ${w}`, traceHint:'Đưa ngón tay theo nét',
@@ -76,6 +77,7 @@ const T = {
       add:'How many blocks altogether?', addSpeak:(a,b)=>`${a} plus ${b} is?`, addCombine:'Tap to join the two blocks!',
       addDrag:'Drag the two towers together!', addEq:(s)=>`Equals ${s}!`,
       sub:(m)=>`Take away ${m} blocks`, subSpeak:(m)=>`Take away ${m}`, subHint:'Tap a block to remove it',
+      subEq:(n,m)=>`${n} take away ${m} is?`, subCount:'Count what’s left', subPick:'How many are left?',
       flashStudy:'Look carefully at the bright cells!', flashRecall:'Which cells were lit? Tap them!',
       balance:'Add to make both sides equal!', balanceSpeak:'Make both sides equal', balanceHint:'Tap to add — tap an item on the tray to remove',
       match:'Flip to find 2 that match!', matchSpeak:'Find two that match', trace:(n)=>`Trace the number ${n}`, traceSpeak:(w)=>`Write ${w}`, traceHint:'Move your finger along the line',
@@ -385,6 +387,7 @@ function handleChoice(node, it){
   if(locked) return; prime();
   if(it.correct){ locked=true; node.classList.add('right');
     document.querySelectorAll('#choices .choice').forEach(x=>{ if(x!==node) x.classList.add('dim'); });
+    if(it.onRight) it.onRight();
     winRound(it);
   } else { node.classList.add('wrong','dim'); sWrong(); speak(pick(tt().tryagain)); setTimeout(()=>node.classList.remove('wrong'),500); }
 }
@@ -473,25 +476,35 @@ function rAdd(){
 
 /* SUBTRACT: take-away — tap cubes off the tower until M removed, remaining = answer */
 function rSub(){
-  const N=rint(3, state.profile==='toddler'?5:10), M=rint(1,N-1), ans=N-M;
-  setPrompt(tt().prompt.sub(M), tt().prompt.subSpeak(word(M)));
+  const N=rint(3, state.profile==='toddler'?6:10), M=rint(1,N-1), ans=N-M;
+  setPrompt(`<span class="eq">${N} − ${M} = <b class="q">?</b></span>`, tt().prompt.subEq(word(N),word(M)));
   const wrap=el('div','add-wrap','');
   const tower=nbStack(N,'#7c83ff');
-  wrap.appendChild(el('div','sub-count','−'+M));
   const row=el('div','add-row',''); row.appendChild(tower); wrap.appendChild(row);
-  wrap.appendChild(el('div','bal-hint', tt().prompt.subHint));
+  const hint=el('div','bal-hint', tt().prompt.subHint); wrap.appendChild(hint);
   $('#stage').appendChild(wrap);
-  let removed=0; locked=false;
-  [...tower.children].forEach(u=>{ u.style.cursor='pointer';
-    u.onclick=()=>{ if(locked||u.dataset.gone||removed>=M)return; u.dataset.gone=1; u.classList.add('fly'); removed++; sTap(); speak(word(N-removed));
+  const cubes=[...tower.children]; let removed=0; locked=false;
+  cubes.forEach(u=>{ u.style.cursor='pointer';
+    u.onclick=()=>{ if(locked||u.dataset.gone||removed>=M)return; u.dataset.gone=1; u.classList.add('fly'); removed++; sTap();
       setTimeout(()=>{ u.style.display='none'; },340);
-      if(removed>=M){ locked=true; setTimeout(()=>winRound({}),800); } }; });
+      if(removed>=M){ locked=true; setTimeout(recount,650); } }; });
+  function recount(){                                // count what's left, out loud
+    const left=cubes.filter(u=>!u.dataset.gone);
+    hint.textContent=tt().prompt.subCount; speak(tt().prompt.subCount);
+    let i=0; const step=()=>{ if(i<left.length){ left[i].classList.add('nb-merge'); left[i].style.background='#4dabf7'; sTap(); speak(word(i+1)); i++; setTimeout(step,440); } else { pickAnswer(); } };
+    setTimeout(step,350);
+  }
+  function pickAnswer(){                              // choose the result, then reveal it in the equation
+    hint.textContent=tt().prompt.subPick;
+    const reveal=()=>{ const q=$('#promptText').querySelector('.q'); if(q){ q.textContent=ans; q.classList.add('hi'); } };
+    mountChoices(numberChoices(ans,N).map(v=>({ node:el('button',null,String(v)), correct:v===ans, onRight:reveal })));
+  }
 }
 
 /* FLASH & RECALL: show lit cells for a few seconds, hide, then tap where they were */
 const FLASH_CFG = {
-  toddler:  { easy:{n:2,expo:7,c:2,r:2}, mid:{n:2,expo:6,c:3,r:2}, hard:{n:3,expo:6,c:3,r:2} },
-  preschool:{ easy:{n:3,expo:6,c:3,r:3}, mid:{n:4,expo:5,c:3,r:3}, hard:{n:5,expo:4,c:4,r:3} }
+  toddler:  { easy:{n:3,expo:6,c:3,r:2}, mid:{n:4,expo:5,c:3,r:3}, hard:{n:5,expo:5,c:4,r:3} },
+  preschool:{ easy:{n:4,expo:5,c:3,r:3}, mid:{n:5,expo:5,c:4,r:3}, hard:{n:6,expo:4,c:4,r:4} }
 };
 function rFlash(){
   const table=FLASH_CFG[state.profile]; if(!table[state.flashDiff]) state.flashDiff='easy';
@@ -527,8 +540,8 @@ function rFlash(){
 function rMatch(){
   const pool = MATCH_POOL[theme()];
   const diffs = state.profile==='toddler'
-    ? [{k:'easy',pairs:2,cols:2},{k:'mid',pairs:3,cols:3},{k:'hard',pairs:4,cols:4}]
-    : [{k:'easy',pairs:3,cols:3},{k:'mid',pairs:6,cols:4},{k:'hard',pairs:8,cols:4}];
+    ? [{k:'easy',pairs:3,cols:3},{k:'mid',pairs:4,cols:4},{k:'hard',pairs:6,cols:4}]
+    : [{k:'easy',pairs:4,cols:4},{k:'mid',pairs:6,cols:4},{k:'hard',pairs:8,cols:4}];
   if(!diffs.find(d=>d.k===state.matchDiff)) state.matchDiff='easy';
   setPrompt(tt().prompt.match, tt().prompt.matchSpeak);
   const stage=$('#stage');
