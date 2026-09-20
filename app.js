@@ -25,7 +25,7 @@ const NUM = {
 const T = {
   vi:{
     appTitle:'Bé Học',
-    subjects:{math:'Toán & Tư duy', english:'Tiếng Anh', play:'Chơi vui'},
+    subjects:{math:'Toán & Tư duy', english:'Tiếng Anh', play:'Chơi vui', phonics:'Phonics'},
     profiles:{toddler:'Bé nhỏ', preschool:'Bé lớn'},
     games:{count:'Đếm', feed:'Cho ăn', numeral:'Học số', add:'Phép cộng', balance:'Cân nặng',
            shapes:'Hình khối', bigsmall:'To & Nhỏ', colors:'Màu sắc', odd:'Tìm cái khác', pattern:'Tiếp theo',
@@ -38,6 +38,7 @@ const T = {
       add:'Có tất cả bao nhiêu khối?', addSpeak:(a,b)=>`${a} cộng ${b} bằng mấy?`, addCombine:'Chạm để ghép 2 khối lại!',
       balance:'Thêm cho hai bên bằng nhau!', balanceSpeak:'Thêm cho hai bên bằng nhau', balanceHint:'Chạm để thêm — chạm vật trên đĩa để bớt',
       match:'Lật tìm 2 hình giống nhau!', matchSpeak:'Tìm hai hình giống nhau', trace:(n)=>`Tô theo số ${n}`, traceSpeak:(w)=>`Viết số ${w}`, traceHint:'Đưa ngón tay theo nét',
+      pLearn:'Nghe âm nào!', pFind:(L)=>`Hình nào bắt đầu bằng "${L}"?`, pRead:'Đọc từ — chọn hình đúng!', pNext:'Tiếp →', pSoon:'Sắp có', pLevel:(n)=>`Sách ${n}`,
       shapesFind:(s)=>`Chạm vào hình ${s}`,
       biggest:'Chạm vào cái TO nhất', smallest:'Chạm vào cái NHỎ nhất',
       colorFind:(c)=>`Chạm vào màu ${c}`,
@@ -59,7 +60,7 @@ const T = {
   },
   en:{
     appTitle:'Little Learners',
-    subjects:{math:'Math & Thinking', english:'English', play:'Fun'},
+    subjects:{math:'Math & Thinking', english:'English', play:'Fun', phonics:'Phonics'},
     profiles:{toddler:'Little one', preschool:'Big kid'},
     games:{count:'Count', feed:'Feed', numeral:'Numbers', add:'Add', balance:'Weigh',
            shapes:'Shapes', bigsmall:'Big & Small', colors:'Colors', odd:'Odd one out', pattern:'What’s next',
@@ -72,6 +73,7 @@ const T = {
       add:'How many blocks altogether?', addSpeak:(a,b)=>`${a} plus ${b} is?`, addCombine:'Tap to join the two blocks!',
       balance:'Add to make both sides equal!', balanceSpeak:'Make both sides equal', balanceHint:'Tap to add — tap an item on the tray to remove',
       match:'Flip to find 2 that match!', matchSpeak:'Find two that match', trace:(n)=>`Trace the number ${n}`, traceSpeak:(w)=>`Write ${w}`, traceHint:'Move your finger along the line',
+      pLearn:'Listen to the sound!', pFind:(L)=>`Which one starts with "${L}"?`, pRead:'Read the word — tap the picture!', pNext:'Next →', pSoon:'Soon', pLevel:(n)=>`Book ${n}`,
       shapesFind:(s)=>`Tap the ${s}`,
       biggest:'Tap the BIGGEST one', smallest:'Tap the SMALLEST one',
       colorFind:(c)=>`Tap the ${c} one`,
@@ -194,6 +196,30 @@ function svgPony(){ return `<svg viewBox="0 0 100 100" class="mascot-svg" aria-h
   <path d="M60 56 Q66 60 72 56" stroke="#c76" stroke-width="2.6" fill="none" stroke-linecap="round"/>
 </svg>`; }
 const mascotSVG = ()=> theme()==='dino' ? svgDino() : svgPony();
+/* ---- Oxford-style phonics data ---- */
+const PHONICS_L1 = [
+  {L:'A',w:'apple',e:'🍎'},{L:'B',w:'ball',e:'⚽'},{L:'C',w:'cat',e:'🐱'},{L:'D',w:'dog',e:'🐶'},
+  {L:'E',w:'egg',e:'🥚'},{L:'F',w:'fish',e:'🐟'},{L:'G',w:'goat',e:'🐐'},{L:'H',w:'hat',e:'🎩'},
+  {L:'I',w:'insect',e:'🐛'},{L:'J',w:'juice',e:'🧃'},{L:'K',w:'key',e:'🔑'},{L:'L',w:'lion',e:'🦁'},
+  {L:'M',w:'moon',e:'🌙'},{L:'N',w:'nest',e:'🪺'},{L:'O',w:'octopus',e:'🐙'},{L:'P',w:'pig',e:'🐷'},
+  {L:'Q',w:'queen',e:'👸'},{L:'R',w:'rabbit',e:'🐰'},{L:'S',w:'sun',e:'☀️'},{L:'T',w:'tiger',e:'🐯'},
+  {L:'U',w:'umbrella',e:'☂️'},{L:'V',w:'van',e:'🚐'},{L:'W',w:'watch',e:'⌚'},{L:'X',w:'fox',e:'🦊'},
+  {L:'Y',w:'yoyo',e:'🪀'},{L:'Z',w:'zebra',e:'🦓'}
+];
+const PHONICS_L2 = [
+  {w:'cat',e:'🐱'},{w:'hat',e:'🎩'},{w:'bag',e:'👜'},{w:'map',e:'🗺️'},
+  {w:'hen',e:'🐔'},{w:'bed',e:'🛏️'},{w:'net',e:'🥅'},{w:'pen',e:'🖊️'},
+  {w:'pig',e:'🐷'},{w:'six',e:'6️⃣'},{w:'pin',e:'📌'},{w:'lips',e:'👄'},
+  {w:'dog',e:'🐶'},{w:'box',e:'📦'},{w:'mop',e:'🧹'},{w:'pot',e:'🍲'},
+  {w:'bus',e:'🚌'},{w:'sun',e:'☀️'},{w:'cup',e:'☕'},{w:'bug',e:'🐛'}
+];
+const PHONICS_LEVELS = [
+  {n:1, vi:'Chữ & Âm',        en:'Letter Sounds',      sub:'A–Z',        icon:'🅰️', color:'#ff8fab', locked:false},
+  {n:2, vi:'Nguyên âm ngắn',  en:'Short Vowels',       sub:'cat · dog',  icon:'🐱', color:'#4dabf7', locked:false},
+  {n:3, vi:'Nguyên âm dài',   en:'Long Vowels',        sub:'cake · bike',icon:'🎂', color:'#20c997', locked:true},
+  {n:4, vi:'Ghép phụ âm',     en:'Blends & Digraphs',  sub:'sh · bl',    icon:'🚀', color:'#c77dff', locked:true},
+  {n:5, vi:'Ghép nguyên âm',  en:'Letter Teams',       sub:'ai · ee',    icon:'🌈', color:'#ffb14e', locked:true}
+];
 
 /* ---------- Utils ---------- */
 const $ = (s)=>document.querySelector(s);
@@ -252,14 +278,16 @@ function renderHome(){
   $('#subMath').textContent = tt().subjects.math;
   $('#subEng').textContent  = tt().subjects.english;
   $('#subPlay').textContent = tt().subjects.play;
+  $('#subPhonics').textContent = tt().subjects.phonics;
   updateReward();
   document.querySelectorAll('#subjectTabs .seg-btn').forEach(b=> b.classList.toggle('on', b.dataset.subject===state.subject));
   document.querySelectorAll('#profileSeg .seg-btn').forEach(b=>{
     b.classList.toggle('on', b.dataset.profile===state.profile);
     b.querySelector('.lbl-main').textContent = tt().profiles[b.dataset.profile];
   });
-  const list = GAMES.filter(g=>g.profiles.includes(state.profile) && g.subject===state.subject);
   const grid = $('#gameGrid'); grid.innerHTML='';
+  if(state.subject==='phonics'){ renderPhonicsLevels(grid); return; }
+  const list = GAMES.filter(g=>g.profiles.includes(state.profile) && g.subject===state.subject);
   const cols = list.length===4 ? 2 : list.length<=3 ? list.length : 3;
   grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
   grid.style.maxWidth = list.length===4 ? '720px' : '1040px';
@@ -269,6 +297,18 @@ function renderHome(){
     c.style.setProperty('--card-shade', shade(g.color,-32));
     c.innerHTML = `<div class="ico-plate"><div class="ico">${g.icon}</div></div><div class="label">${tt().games[g.id]}</div>`;
     c.onclick = ()=>{ prime(); sTap(); startGame(g); };
+    grid.appendChild(c);
+  });
+}
+function renderPhonicsLevels(grid){
+  grid.style.gridTemplateColumns = 'repeat(3,1fr)'; grid.style.maxWidth='1040px';
+  PHONICS_LEVELS.forEach(lv=>{
+    const c = el('button','card'+(lv.locked?' locked':''));
+    c.style.background = `linear-gradient(160deg, ${shade(lv.color,15)}, ${shade(lv.color,-8)})`;
+    c.style.setProperty('--card-shade', shade(lv.color,-32));
+    const name = state.lang==='vi'?lv.vi:lv.en;
+    c.innerHTML = `<div class="ico-plate"><div class="ico">${lv.icon}</div></div><div class="label">${tt().prompt.pLevel(lv.n)}: ${name}</div><div class="card-sub">${lv.locked?tt().prompt.pSoon:lv.sub}</div>`;
+    if(!lv.locked) c.onclick = ()=>{ prime(); sTap(); startGame({id:'phonics'+lv.n, gen:'phonics', level:lv.n, subject:'phonics', profiles:['toddler','preschool']}); };
     grid.appendChild(c);
   });
 }
@@ -315,7 +355,7 @@ function openCollection(){
 /* ============================================================
    GAME LOOP
    ============================================================ */
-const GEN = { count:rCount, feed:rFeed, add:rAdd, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords, match:rMatch, trace:rTrace };
+const GEN = { count:rCount, feed:rFeed, add:rAdd, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords, match:rMatch, trace:rTrace, phonics:rPhonics };
 let curDef=null, locked=false, playStart=0, inGame=false;
 
 function startGame(def){ curDef=def; inGame=true; armBreak(); document.body.classList.add('playing'); show('game'); nextRound(); }
@@ -481,6 +521,39 @@ function rTrace(){
   box.addEventListener('pointermove',(ev)=>{ if(!drawing||locked)return; const p=toSvg(ev); dstr+=` L${p.x} ${p.y}`; userPath.setAttribute('d',dstr); check(p.x,p.y); ev.preventDefault(); });
   const stop=()=>{ drawing=false; };
   box.addEventListener('pointerup',stop); box.addEventListener('pointerleave',stop); box.addEventListener('pointercancel',stop);
+}
+
+/* ---------- Phonics (Oxford-style: learn → find sound → read CVC) ---------- */
+let phonicsCount=0;
+function phonicsLearn(big, wordText, emoji, isWord){
+  setPrompt(tt().prompt.pLearn, `${big}. ${wordText}`, true);
+  const card=el('div','p-card','');
+  card.innerHTML=`<div class="p-big${isWord?' word':''}">${isWord?big.toLowerCase():big}</div><div class="p-emoji">${emoji}</div><div class="p-word2">${wordText}</div>`;
+  card.onclick=()=>{ prime(); speakEN(`${big}. ${wordText}`); };
+  $('#stage').appendChild(card);
+  const next=el('button','choice wide',tt().prompt.pNext); next.style.minWidth='200px';
+  next.onclick=()=>{ prime(); sTap(); if(inGame) nextRound(); };
+  $('#choices').appendChild(next); locked=false;
+}
+function rPhonics(){
+  const lvl=curDef.level; phonicsCount++;
+  const learn = phonicsCount%3===1;
+  const picChoice=(list,keyOf,target)=>{ const distract=shuffle(list.filter(x=>keyOf(x)!==keyOf(target))).slice(0,2);
+    return shuffle([target,...distract]).map(o=>{ const b=el('button',null,''); const g=el('div','obj',o.e); g.style.fontSize='clamp(50px,11vw,100px)'; b.appendChild(g);
+      return { node:b, correct:keyOf(o)===keyOf(target), rightSpeakEN:target.w }; }); };
+  if(lvl===1){
+    const t=pick(PHONICS_L1);
+    if(learn) return phonicsLearn(t.L, t.w, t.e);
+    setPrompt(tt().prompt.pFind(t.L), `${t.L}. ${t.w}`, true);
+    const big=el('div','p-big',t.L); $('#stage').appendChild(big);
+    mountChoices(picChoice(PHONICS_L1, x=>x.L, t));
+  } else {
+    const t=pick(PHONICS_L2);
+    if(learn) return phonicsLearn(t.w.toUpperCase(), t.w, t.e, true);
+    setPrompt(tt().prompt.pRead, t.w, true);
+    const wd=el('div','p-big word',t.w); $('#stage').appendChild(wd);
+    mountChoices(picChoice(PHONICS_L2, x=>x.w, t));
+  }
 }
 
 /* ---------- Balance: make both sides EQUAL (drag/tap beads in) ---------- */

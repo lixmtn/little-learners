@@ -271,6 +271,14 @@ body.theme-pony{ background:
 .tc-fill{ fill:none; stroke:url(#tgrad); stroke-width:14; stroke-linecap:round; stroke-linejoin:round; }
 .tc-dot{ fill:#cabfff; } .tc-dot.hit{ fill:#34d399; } .tc-start{ fill:#ff6f91; }
 
+/* ===== Phonics ===== */
+.card-sub{ font-size:clamp(12px,1.8vw,16px); font-weight:800; opacity:.9; margin-top:-4px; z-index:1; text-shadow:0 1px 3px rgba(0,0,0,.14); }
+.p-big{ font-size:clamp(84px,18vw,180px); font-weight:900; color:var(--brand); line-height:1; text-shadow:0 4px 8px rgba(108,92,231,.16); }
+.p-big.word{ font-size:clamp(52px,11vw,104px); letter-spacing:.08em; text-transform:lowercase; }
+.p-card{ display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
+.p-emoji{ font-size:clamp(58px,12vw,116px); animation:objIn .3s ease both; }
+.p-word2{ font-size:clamp(22px,4vw,34px); font-weight:800; color:var(--ink); text-transform:capitalize; }
+
 /* ===== Motion / juice pass ===== */
 #scenery{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
 #scenery .sc{ position:absolute; opacity:.13; line-height:1; will-change:transform; animation:float 7s ease-in-out infinite; }
