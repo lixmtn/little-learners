@@ -1,5 +1,5 @@
 /* Simple offline cache — bump CACHE to force update */
-const CACHE = 'little-learners-v8';
+const CACHE = 'little-learners-v9';
 const ASSETS = [
   './', './index.html', './app.css', './app.js',
   './manifest.webmanifest',

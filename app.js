@@ -744,4 +744,11 @@ document.addEventListener('pointerdown', prime, { once:true });
 
 document.documentElement.lang=state.lang;
 renderHome();
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+/* auto-update: when a new service worker takes over, reload once so the newest
+   version shows without the user having to remove/re-add the app */
+if('serviceWorker' in navigator){
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(reloaded) return; reloaded=true; if(hadController) location.reload(); });
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').then(reg=>{ reg.update(); setInterval(()=>reg.update(), 60000); }).catch(()=>{}));
+}
