@@ -271,6 +271,28 @@ body.theme-pony{ background:
 .tc-fill{ fill:none; stroke:url(#tgrad); stroke-width:14; stroke-linecap:round; stroke-linejoin:round; }
 .tc-dot{ fill:#cabfff; } .tc-dot.hit{ fill:#34d399; } .tc-start{ fill:#ff6f91; }
 
+/* ===== Add (drag-merge) / Subtract (take-away) ===== */
+.add-wrap{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+.add-row{ display:flex; align-items:flex-end; justify-content:center; gap:clamp(12px,3vw,34px); }
+.nb-stack.draggable{ cursor:grab; touch-action:none; position:relative; z-index:3; }
+.nb-stack.draggable::after{ content:"✋"; position:absolute; top:-30px; left:50%; transform:translateX(-50%); font-size:22px; animation:idle 1.6s ease-in-out infinite; }
+.nb-stack.draggable:active{ cursor:grabbing; }
+.nb-total{ font-size:clamp(44px,9vw,84px); font-weight:900; color:var(--brand); opacity:0; transform:scale(.4); transition:opacity .3s, transform .3s; }
+.nb-total.show{ opacity:1; transform:scale(1); }
+.nb-unit.fly{ animation:fly .34s ease forwards; }
+@keyframes fly{ to{ transform:translateY(-70px) scale(.3) rotate(25deg); opacity:0; } }
+.sub-count{ font-size:clamp(30px,5vw,44px); font-weight:900; color:#e64980; }
+
+/* ===== Flash memory ===== */
+.flash-grid{ display:grid; gap:clamp(8px,1.6vw,14px); justify-content:center; margin:0 auto; }
+.fcell{ aspect-ratio:1; border-radius:16px; background:rgba(255,255,255,.9);
+  box-shadow:inset 0 2px 8px rgba(60,40,120,.08), 0 5px 0 rgba(120,90,190,.12); display:grid; place-items:center;
+  font-size:clamp(26px,5vw,44px); cursor:pointer; transition:background .2s, transform .1s, box-shadow .2s; }
+.fcell.lit{ background:linear-gradient(160deg,#ffd23f,#ff9f1c); box-shadow:0 0 0 4px #ffd23f66, 0 6px 14px rgba(0,0,0,.16); animation:objIn .3s ease; }
+.fcell.ok{ background:linear-gradient(160deg,#2fd48a,#12b76a)!important; box-shadow:0 0 0 4px #34d39966!important; }
+.fcell.miss{ animation:wobble .4s; }
+.fcell:active{ transform:scale(.93); }
+
 /* ===== Phonics ===== */
 .card-sub{ font-size:clamp(12px,1.8vw,16px); font-weight:800; opacity:.9; margin-top:-4px; z-index:1; text-shadow:0 1px 3px rgba(0,0,0,.14); }
 .p-big{ font-size:clamp(84px,18vw,180px); font-weight:900; color:var(--brand); line-height:1; text-shadow:0 4px 8px rgba(108,92,231,.16); }

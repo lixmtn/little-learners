@@ -8,7 +8,7 @@
 'use strict';
 
 /* ---------- State ---------- */
-const DEFAULTS = { profile:'toddler', lang:'vi', subject:'math', voice:true, breakMins:15, matchDiff:'easy',
+const DEFAULTS = { profile:'toddler', lang:'vi', subject:'math', voice:true, breakMins:15, matchDiff:'easy', flashDiff:'easy',
   dino:{ badges:0, prog:0 }, pony:{ done:0, pieces:0 } };
 const state = Object.assign({}, DEFAULTS, load());
 // backfill nested objects if an older save existed
@@ -30,12 +30,15 @@ const T = {
     games:{count:'Đếm', feed:'Cho ăn', numeral:'Học số', add:'Phép cộng', balance:'Cân nặng',
            shapes:'Hình khối', bigsmall:'To & Nhỏ', colors:'Màu sắc', odd:'Tìm cái khác', pattern:'Tiếp theo',
            abc:'Chữ cái ABC', words:'Từ vựng', colorsEN:'Màu sắc', shapesEN:'Hình khối',
-           match:'Ghép hình', trace:'Tập viết số'},
+           match:'Ghép hình', trace:'Tập viết số', sub:'Phép trừ', flash:'Nhớ ô sáng'},
     diff:{easy:'Dễ', mid:'Vừa', hard:'Khó'},
     prompt:{
       count:'Đếm xem có bao nhiêu?',
       feed:(n)=>`Cho bạn ấy ăn ${n} cái nào!`, feedSpeak:(w)=>`Cho ăn ${w} cái`,
       add:'Có tất cả bao nhiêu khối?', addSpeak:(a,b)=>`${a} cộng ${b} bằng mấy?`, addCombine:'Chạm để ghép 2 khối lại!',
+      addDrag:'Kéo 2 tháp khối lại với nhau!', addEq:(s)=>`Bằng ${s}!`,
+      sub:(m)=>`Bớt đi ${m} khối`, subSpeak:(m)=>`Bớt đi ${m} khối`, subHint:'Chạm khối để bỏ ra',
+      flashStudy:'Nhìn kỹ các ô sáng!', flashRecall:'Ô nào vừa sáng? Chạm vào!',
       balance:'Thêm cho hai bên bằng nhau!', balanceSpeak:'Thêm cho hai bên bằng nhau', balanceHint:'Chạm để thêm — chạm vật trên đĩa để bớt',
       match:'Lật tìm 2 hình giống nhau!', matchSpeak:'Tìm hai hình giống nhau', trace:(n)=>`Tô theo số ${n}`, traceSpeak:(w)=>`Viết số ${w}`, traceHint:'Đưa ngón tay theo nét',
       pLearn:'Nghe âm nào!', pFind:(L)=>`Hình nào bắt đầu bằng "${L}"?`, pRead:'Đọc từ — chọn hình đúng!', pNext:'Tiếp →', pSoon:'Sắp có', pLevel:(n)=>`Sách ${n}`,
@@ -65,12 +68,15 @@ const T = {
     games:{count:'Count', feed:'Feed', numeral:'Numbers', add:'Add', balance:'Weigh',
            shapes:'Shapes', bigsmall:'Big & Small', colors:'Colors', odd:'Odd one out', pattern:'What’s next',
            abc:'ABC Letters', words:'First Words', colorsEN:'Colors', shapesEN:'Shapes',
-           match:'Memory', trace:'Trace'},
+           match:'Memory', trace:'Trace', sub:'Subtract', flash:'Flash memory'},
     diff:{easy:'Easy', mid:'Medium', hard:'Hard'},
     prompt:{
       count:'How many are there?',
       feed:(n)=>`Feed your friend ${n}!`, feedSpeak:(w)=>`Feed ${w}`,
       add:'How many blocks altogether?', addSpeak:(a,b)=>`${a} plus ${b} is?`, addCombine:'Tap to join the two blocks!',
+      addDrag:'Drag the two towers together!', addEq:(s)=>`Equals ${s}!`,
+      sub:(m)=>`Take away ${m} blocks`, subSpeak:(m)=>`Take away ${m}`, subHint:'Tap a block to remove it',
+      flashStudy:'Look carefully at the bright cells!', flashRecall:'Which cells were lit? Tap them!',
       balance:'Add to make both sides equal!', balanceSpeak:'Make both sides equal', balanceHint:'Tap to add — tap an item on the tray to remove',
       match:'Flip to find 2 that match!', matchSpeak:'Find two that match', trace:(n)=>`Trace the number ${n}`, traceSpeak:(w)=>`Write ${w}`, traceHint:'Move your finger along the line',
       pLearn:'Listen to the sound!', pFind:(L)=>`Which one starts with "${L}"?`, pRead:'Read the word — tap the picture!', pNext:'Next →', pSoon:'Soon', pLevel:(n)=>`Book ${n}`,
@@ -116,14 +122,16 @@ const GAMES = [
   { id:'count',   gen:'count',   icon:'🍎', color:'#ff6f91', subject:'math', profiles:['toddler','preschool'] },
   { id:'feed',    gen:'feed',    icon:'🍖', color:'#20c997', subject:'math', profiles:['toddler'] },
   { id:'add',     gen:'add',     icon:'➕', color:'#4dabf7', subject:'math', profiles:['preschool'] },
+  { id:'sub',     gen:'sub',     icon:'➖', color:'#f783ac', subject:'math', profiles:['preschool'] },
   { id:'balance', gen:'balance', icon:'⚖️', color:'#7c83ff', subject:'math', profiles:['preschool'] },
   { id:'shapes',  gen:'shapes',  icon:'🔺', color:'#ff9f5a', subject:'math', profiles:['toddler','preschool'] },
   { id:'bigsmall',gen:'bigsmall',icon:'📏', color:'#2fc19e', subject:'math', profiles:['toddler'] },
-  { id:'colors',  gen:'colors',  icon:'🎨', color:'#c77dff', subject:'math', profiles:['toddler','preschool'] },
+  { id:'colors',  gen:'colors',  icon:'🎨', color:'#c77dff', subject:'math', profiles:['toddler'] },
   { id:'odd',     gen:'odd',     icon:'🔍', color:'#ffb14e', subject:'math', profiles:['toddler'] },
   { id:'pattern', gen:'pattern', icon:'🧩', color:'#39b7e5', subject:'math', profiles:['preschool'] },
   { id:'match',   gen:'match',   icon:'🃏', color:'#ff8fab', subject:'play', profiles:['toddler','preschool'] },
   { id:'trace',   gen:'trace',   icon:'✏️', color:'#5cc8b8', subject:'play', profiles:['toddler','preschool'] },
+  { id:'flash',   gen:'flash',   icon:'🧠', color:'#ffa94d', subject:'play', profiles:['toddler','preschool'] },
   { id:'abc',     gen:'abc',     icon:'🔤', color:'#8a7cff', subject:'english', profiles:['toddler','preschool'] },
   { id:'words',   gen:'words',   icon:'🐾', color:'#3ec9a7', subject:'english', profiles:['toddler','preschool'] },
   { id:'colorsEN',gen:'colors',  icon:'🌈', color:'#ff6f91', subject:'english', profiles:['toddler','preschool'], en:true },
@@ -355,7 +363,7 @@ function openCollection(){
 /* ============================================================
    GAME LOOP
    ============================================================ */
-const GEN = { count:rCount, feed:rFeed, add:rAdd, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords, match:rMatch, trace:rTrace, phonics:rPhonics };
+const GEN = { count:rCount, feed:rFeed, add:rAdd, sub:rSub, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords, match:rMatch, trace:rTrace, flash:rFlash, phonics:rPhonics };
 let curDef=null, locked=false, playStart=0, inGame=false;
 
 function startGame(def){ curDef=def; inGame=true; armBreak(); document.body.classList.add('playing'); show('game'); nextRound(); }
@@ -433,23 +441,86 @@ function rFeed(){
 
 /* ---------- Add (Numberblocks) ---------- */
 function nbStack(n,color){ const s=el('div','nb-stack',''); for(let i=0;i<n;i++){ const u=el('div','nb-unit',''); u.style.background=color; s.appendChild(u);} return s; }
+/* ADD: drag one tower onto the other → cubes merge into one tower, count up (no multiple-choice) */
 function rAdd(){
-  const a=rint(1,4), b=rint(1,Math.min(4,8-a)), sum=a+b;
-  setPrompt(tt().prompt.addCombine, tt().prompt.addSpeak(word(a),word(b)));
-  const row=el('div','nb-row','');
-  const sa=nbStack(a,'#4dabf7'), op=el('div','nb-op','+'), sb=nbStack(b,'#ff6f91');
-  sa.style.cursor='pointer'; sb.style.cursor='pointer';
-  row.appendChild(sa); row.appendChild(op); row.appendChild(sb);
-  $('#stage').appendChild(row);
-  let combined=false;
-  const combine=()=>{ if(combined||locked) return; combined=true; sTap();
-    op.style.display='none';
-    [...sb.children].forEach(u=>{ u.classList.add('nb-merge'); sa.appendChild(u); });
-    sb.remove();
-    setPrompt(tt().prompt.add);                       // now: how many altogether?
-    mountChoices(numberChoices(sum,10).map(v=>({ node: el('button',null,String(v)), correct: v===sum })));
-  };
-  sa.onclick=combine; sb.onclick=combine;
+  const max = state.profile==='toddler' ? 5 : 10;
+  const a=rint(1,max-1), b=rint(1,max-a), sum=a+b;
+  setPrompt(tt().prompt.addDrag, tt().prompt.addSpeak(word(a),word(b)));
+  const wrap=el('div','add-wrap','');
+  const row=el('div','add-row','');
+  const tA=nbStack(a,'#4dabf7'), op=el('div','nb-op','+'), tB=nbStack(b,'#ff6f91');
+  tB.classList.add('draggable');
+  row.appendChild(tA); row.appendChild(op); row.appendChild(tB);
+  const badge=el('div','nb-total',''); wrap.appendChild(row); wrap.appendChild(badge);
+  wrap.appendChild(el('div','bal-hint', tt().prompt.addDrag));
+  $('#stage').appendChild(wrap);
+  let dragging=false, sx=0, sy=0, merged=false;
+  tB.addEventListener('pointerdown',(ev)=>{ if(merged||locked)return; dragging=true; sx=ev.clientX; sy=ev.clientY; try{tB.setPointerCapture(ev.pointerId);}catch(e){} ev.preventDefault(); });
+  tB.addEventListener('pointermove',(ev)=>{ if(!dragging)return; tB.style.transform=`translate(${ev.clientX-sx}px,${ev.clientY-sy}px)`; });
+  const drop=()=>{ if(!dragging)return; dragging=false;
+    const ra=tA.getBoundingClientRect(), rb=tB.getBoundingClientRect();
+    const dist=Math.hypot((ra.left+ra.width/2)-(rb.left+rb.width/2),(ra.top+ra.height/2)-(rb.top+rb.height/2));
+    if(dist < ra.width+70) doMerge(); else { tB.style.transition='transform .3s'; tB.style.transform=''; setTimeout(()=>tB.style.transition='',300); } };
+  tB.addEventListener('pointerup',drop); tB.addEventListener('pointercancel',drop);
+  function doMerge(){ if(merged)return; merged=true; locked=true; sTap();
+    op.style.display='none'; tB.style.display='none'; tA.innerHTML='';
+    const cubes=[]; for(let i=0;i<sum;i++){ const u=el('div','nb-unit',''); u.style.background=i<a?'#4dabf7':'#ff6f91'; u.style.opacity='.45'; tA.appendChild(u); cubes.push(u); }
+    let i=0; const step=()=>{ if(i<sum){ cubes[i].style.opacity='1'; cubes[i].classList.add('nb-merge'); sTap(); speak(word(i+1)); i++; setTimeout(step,400); }
+      else { badge.textContent=sum; badge.classList.add('show'); speak(tt().prompt.addEq(word(sum))); setTimeout(()=>winRound({}),1000); } };
+    setTimeout(step,300);
+  }
+}
+
+/* SUBTRACT: take-away — tap cubes off the tower until M removed, remaining = answer */
+function rSub(){
+  const N=rint(3, state.profile==='toddler'?5:10), M=rint(1,N-1), ans=N-M;
+  setPrompt(tt().prompt.sub(M), tt().prompt.subSpeak(word(M)));
+  const wrap=el('div','add-wrap','');
+  const tower=nbStack(N,'#7c83ff');
+  wrap.appendChild(el('div','sub-count','−'+M));
+  const row=el('div','add-row',''); row.appendChild(tower); wrap.appendChild(row);
+  wrap.appendChild(el('div','bal-hint', tt().prompt.subHint));
+  $('#stage').appendChild(wrap);
+  let removed=0; locked=false;
+  [...tower.children].forEach(u=>{ u.style.cursor='pointer';
+    u.onclick=()=>{ if(locked||u.dataset.gone||removed>=M)return; u.dataset.gone=1; u.classList.add('fly'); removed++; sTap(); speak(word(N-removed));
+      setTimeout(()=>{ u.style.display='none'; },340);
+      if(removed>=M){ locked=true; setTimeout(()=>winRound({}),800); } }; });
+}
+
+/* FLASH & RECALL: show lit cells for a few seconds, hide, then tap where they were */
+const FLASH_CFG = {
+  toddler:  { easy:{n:2,expo:7,c:2,r:2}, mid:{n:2,expo:6,c:3,r:2}, hard:{n:3,expo:6,c:3,r:2} },
+  preschool:{ easy:{n:3,expo:6,c:3,r:3}, mid:{n:4,expo:5,c:3,r:3}, hard:{n:5,expo:4,c:4,r:3} }
+};
+function rFlash(){
+  const table=FLASH_CFG[state.profile]; if(!table[state.flashDiff]) state.flashDiff='easy';
+  const c=table[state.flashDiff];
+  const stage=$('#stage');
+  const col=el('div',''); col.style.cssText='display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;';
+  const sel=el('div','match-diff','');
+  ['easy','mid','hard'].forEach(k=>{ const btn=el('button','db'+(k===state.flashDiff?' on':''), tt().diff[k]); btn.onclick=()=>{ state.flashDiff=k; save(); nextRound(); }; sel.appendChild(btn); });
+  col.appendChild(sel);
+  const grid=el('div','flash-grid',''); grid.style.gridTemplateColumns=`repeat(${c.c},1fr)`; grid.style.width=`min(90vw, ${c.c*108}px)`;
+  const total=c.c*c.r, cells=[]; for(let i=0;i<total;i++){ const cell=el('div','fcell',''); grid.appendChild(cell); cells.push(cell); }
+  col.appendChild(grid); stage.appendChild(col);
+  const icon = theme()==='dino' ? '🦖' : '⭐';
+  const lit = new Set(shuffle([...Array(total).keys()]).slice(0,c.n));
+  lit.forEach(i=>{ cells[i].classList.add('lit'); cells[i].textContent=icon; });
+  locked=true;
+  setPrompt(tt().prompt.flashStudy, tt().prompt.flashStudy);
+  let t=c.expo; $('#promptText').textContent=`${tt().prompt.flashStudy} (${t})`;
+  const timer=setInterval(()=>{ t--; if(t>0){ $('#promptText').textContent=`${tt().prompt.flashStudy} (${t})`; }
+    else { clearInterval(timer); recall(); } },1000);
+  function recall(){
+    lit.forEach(i=>{ cells[i].classList.remove('lit'); cells[i].textContent=''; });
+    setPrompt(tt().prompt.flashRecall, tt().prompt.flashRecall);
+    locked=false; let found=0;
+    cells.forEach((cell,i)=>{ cell.onclick=()=>{ if(locked||cell.dataset.done)return;
+      if(lit.has(i)){ cell.dataset.done=1; cell.classList.add('lit','ok'); cell.textContent=icon; found++; sStar();
+        if(found===c.n){ locked=true; setTimeout(()=>winRound({}),500); } }
+      else { cell.classList.add('miss'); sWrong(); speak(pick(tt().tryagain)); setTimeout(()=>cell.classList.remove('miss'),450); } }; });
+  }
 }
 
 /* ---------- Memory match (flip 2, selectable difficulty) ---------- */
