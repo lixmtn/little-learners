@@ -40,7 +40,7 @@ const T = {
       sub:(m)=>`Bớt đi ${m} khối`, subSpeak:(m)=>`Bớt đi ${m} khối`, subHint:'Chạm khối để bỏ ra',
       subEq:(n,m)=>`${n} bớt ${m} bằng mấy?`, subCount:'Đếm lại còn mấy khối?', subPick:'Còn lại mấy khối?',
       flashStudy:'Nhìn kỹ các ô sáng!', flashRecall:'Ô nào vừa sáng? Chạm vào!',
-      balance:'Thêm cho hai bên bằng nhau!', balanceSpeak:'Thêm cho hai bên bằng nhau', balanceHint:'Chạm để thêm — chạm vật trên đĩa để bớt',
+      balance:'Cho hai bên bằng nhau nào!', balanceAsk:(x,t)=>`${x} thêm mấy bằng ${t}?`, balancePick:'Thêm mấy cái để bằng nhau?',
       match:'Lật tìm 2 hình giống nhau!', matchSpeak:'Tìm hai hình giống nhau', trace:(n)=>`Tô theo số ${n}`, traceSpeak:(w)=>`Viết số ${w}`, traceHint:'Đưa ngón tay theo nét',
       pLearn:'Nghe âm nào!', pFind:(L)=>`Hình nào bắt đầu bằng "${L}"?`, pRead:'Đọc từ — chọn hình đúng!', pNext:'Tiếp →', pSoon:'Sắp có', pLevel:(n)=>`Sách ${n}`,
       shapesFind:(s)=>`Chạm vào hình ${s}`,
@@ -79,7 +79,7 @@ const T = {
       sub:(m)=>`Take away ${m} blocks`, subSpeak:(m)=>`Take away ${m}`, subHint:'Tap a block to remove it',
       subEq:(n,m)=>`${n} take away ${m} is?`, subCount:'Count what’s left', subPick:'How many are left?',
       flashStudy:'Look carefully at the bright cells!', flashRecall:'Which cells were lit? Tap them!',
-      balance:'Add to make both sides equal!', balanceSpeak:'Make both sides equal', balanceHint:'Tap to add — tap an item on the tray to remove',
+      balance:'Make both sides equal!', balanceAsk:(x,t)=>`${x} plus how many makes ${t}?`, balancePick:'How many more to make it equal?',
       match:'Flip to find 2 that match!', matchSpeak:'Find two that match', trace:(n)=>`Trace the number ${n}`, traceSpeak:(w)=>`Write ${w}`, traceHint:'Move your finger along the line',
       pLearn:'Listen to the sound!', pFind:(L)=>`Which one starts with "${L}"?`, pRead:'Read the word — tap the picture!', pNext:'Next →', pSoon:'Soon', pLevel:(n)=>`Book ${n}`,
       shapesFind:(s)=>`Tap the ${s}`,
@@ -366,10 +366,12 @@ function openCollection(){
    GAME LOOP
    ============================================================ */
 const GEN = { count:rCount, feed:rFeed, add:rAdd, sub:rSub, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords, match:rMatch, trace:rTrace, flash:rFlash, phonics:rPhonics };
-let curDef=null, locked=false, playStart=0, inGame=false;
+let curDef=null, locked=false, playStart=0, inGame=false, flashTimer=null, pendingReload=false;
+function clearFlashTimer(){ if(flashTimer){ clearInterval(flashTimer); flashTimer=null; } }
 
 function startGame(def){ curDef=def; inGame=true; armBreak(); document.body.classList.add('playing'); show('game'); nextRound(); }
-function exitGame(){ inGame=false; document.body.classList.remove('playing'); try{ speechSynthesis.cancel(); }catch(e){} renderHome(); show('home'); }
+function exitGame(){ inGame=false; clearFlashTimer(); document.body.classList.remove('playing'); try{ speechSynthesis.cancel(); }catch(e){} renderHome(); show('home');
+  if(pendingReload){ pendingReload=false; location.reload(); } }
 
 function setPrompt(html, speakText, en){
   const p=$('#promptText'); p.innerHTML=html;
@@ -401,6 +403,7 @@ function winRound(it){ it=it||{};
   else { celebrate(); setTimeout(()=>{ if(inGame) nextRound(); }, 1350); }
 }
 function nextRound(){
+  clearFlashTimer();
   $('#speakBtn').classList.remove('pulse'); $('#stage').innerHTML=''; $('#choices').innerHTML=''; locked=false;
   GEN[curDef.gen](); maybeBreak();
 }
@@ -520,11 +523,11 @@ function rFlash(){
   const icon = theme()==='dino' ? '🦖' : '⭐';
   const lit = new Set(shuffle([...Array(total).keys()]).slice(0,c.n));
   lit.forEach(i=>{ cells[i].classList.add('lit'); cells[i].textContent=icon; });
-  locked=true;
+  locked=true; clearFlashTimer();
   setPrompt(tt().prompt.flashStudy, tt().prompt.flashStudy);
   let t=c.expo; $('#promptText').textContent=`${tt().prompt.flashStudy} (${t})`;
-  const timer=setInterval(()=>{ t--; if(t>0){ $('#promptText').textContent=`${tt().prompt.flashStudy} (${t})`; }
-    else { clearInterval(timer); recall(); } },1000);
+  flashTimer=setInterval(()=>{ t--; if(t>0){ $('#promptText').textContent=`${tt().prompt.flashStudy} (${t})`; }
+    else { clearFlashTimer(); recall(); } },1000);
   function recall(){
     lit.forEach(i=>{ cells[i].classList.remove('lit'); cells[i].textContent=''; });
     setPrompt(tt().prompt.flashRecall, tt().prompt.flashRecall);
@@ -640,41 +643,36 @@ function rPhonics(){
   }
 }
 
-/* ---------- Balance: make both sides EQUAL (drag/tap beads in) ---------- */
+/* ---------- Balance: missing addend to make both sides equal ("T = X + ?") ---------- */
 function rBalance(){
-  const obj = pick(['🍎','🫘','🧱','⭐','🔵','🍪']);       // one consistent object per round
-  const L = rint(2, state.profile==='preschool' ? 6 : 4); // fixed left count (the target)
-  setPrompt(tt().prompt.balance, tt().prompt.balanceSpeak);
-  const wrap = el('div','','');
-  const scale = el('div','scale','');
-  scale.appendChild(el('div','post','')); scale.appendChild(el('div','base',''));
-  scale.appendChild(el('div','beam',''));
-  const panL = el('div','pan left',''), panR = el('div','pan right','');
-  const lblL = el('div','pan-count',String(L)), lblR = el('div','pan-count','0');
-  panL.appendChild(lblL); panR.appendChild(lblR);
-  for(let i=0;i<L;i++) panL.appendChild(el('div','pi',obj));
+  const obj = pick(['🎂','🧁','🍎','🍪','⭐','🍩']);
+  const T = state.profile==='preschool' ? rint(5,10) : rint(3,6);   // total (up to 10)
+  const X = rint(1, T-1), ans = T - X;                              // known part, missing part
+  setPrompt(`<span class="eq">${T} = ${X} + <b class="q">?</b></span>`, tt().prompt.balanceAsk(word(X),word(T)));
+  const wrap=el('div','','');
+  const scale=el('div','scale tilt-right','');                      // right (X) is lighter → dips... left heavier so tilt-left; X on right lighter → right up
+  scale.classList.remove('tilt-right'); scale.classList.add('tilt-left');
+  scale.appendChild(el('div','post','')); scale.appendChild(el('div','base','')); scale.appendChild(el('div','beam',''));
+  const panL=el('div','pan left',''), panR=el('div','pan right','');
+  panL.appendChild(el('div','pan-count',String(T)));
+  const lblR=el('div','pan-count',String(X)); panR.appendChild(lblR);
+  for(let i=0;i<T;i++) panL.appendChild(el('div','pi',obj));
+  for(let i=0;i<X;i++) panR.appendChild(el('div','pi',obj));
   scale.appendChild(panL); scale.appendChild(panR);
   wrap.appendChild(scale);
-  wrap.appendChild(el('div','bal-hint', tt().prompt.balanceHint));
-
-  let right = 0;
-  const update = ()=>{
-    lblR.textContent = String(right);
-    scale.classList.remove('tilt-left','tilt-right','balanced');
-    if(right < L) scale.classList.add('tilt-left');        // left heavier → dips left
-    else if(right > L) scale.classList.add('tilt-right');
-    else scale.classList.add('balanced');
-  };
-  const removeOne = (pi)=>{ if(locked) return; pi.remove(); right--; sTap(); update(); };
-  const addOne = ()=>{ const pi = el('div','pi',obj); pi.onclick = ()=> removeOne(pi); panR.insertBefore(pi, null); right++; sTap(); speak(word(right)); update();
-    if(right===L){ locked=true; update(); sStar(); setTimeout(()=>winRound({}), 750); } };
-
-  const pile = el('div','bal-pile','');
-  const supply = L + 2;
-  for(let i=0;i<supply;i++){ const f = el('div','bal-src',obj); f.onclick = ()=>{ if(locked) return; addOne(); }; pile.appendChild(f); }
-  wrap.appendChild(pile);
+  wrap.appendChild(el('div','bal-hint', tt().prompt.balancePick));
   $('#stage').appendChild(wrap);
-  update();
+  const set=new Set([ans]); let guard=0;
+  while(set.size<3 && guard++<40){ const c=rint(1, Math.max(3,T-1)); set.add(c); }
+  mountChoices(shuffle([...set]).map(v=>{
+    const b=el('button','wide',''); const g=el('div',''); g.style.cssText='display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:160px;';
+    for(let i=0;i<v;i++){ const e=el('span','',obj); e.style.fontSize='clamp(18px,3.2vw,28px)'; g.appendChild(e); } b.appendChild(g);
+    return { node:b, correct:v===ans, onRight:()=>{
+      const q=$('#promptText').querySelector('.q'); if(q){ q.textContent=ans; q.classList.add('hi'); }
+      for(let i=0;i<ans;i++){ const pi=el('div','pi',obj); pi.classList.add('nb-merge'); panR.appendChild(pi); }
+      lblR.textContent=String(T); scale.classList.remove('tilt-left'); scale.classList.add('balanced');
+    } };
+  }));
 }
 
 /* ---------- Shapes ---------- */
@@ -833,6 +831,7 @@ renderHome();
 if('serviceWorker' in navigator){
   const hadController = !!navigator.serviceWorker.controller;
   let reloaded=false;
-  navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(reloaded) return; reloaded=true; if(hadController) location.reload(); });
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(reloaded||!hadController) return;
+    if(inGame){ pendingReload=true; } else { reloaded=true; location.reload(); } });
   window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').then(reg=>{ reg.update(); setInterval(()=>reg.update(), 60000); }).catch(()=>{}));
 }
