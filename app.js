@@ -726,15 +726,25 @@ function rOdd(){
 
 /* ---------- Pattern ---------- */
 function rPattern(){
-  const pool=['🔴','🔵','🟡','🟢','🟣','🟠','⭐','❤️'];
-  const unitLen=cfg().patternUnit, unit=shuffle(pool).slice(0,unitLen), visible=unitLen*2;
-  const seq=[]; for(let i=0;i<visible;i++) seq.push(unit[i%unitLen]); const answer=unit[visible%unitLen];
+  const pool=['🔴','🔵','🟡','🟢','🟣','🟠','⭐','❤️','🔺','🟩','🍎','🐱'];
+  const templates = state.profile==='toddler'
+    ? [[0,1],[0,0,1],[0,1,1]]                                   // AB · AAB · ABB
+    : [[0,1],[0,1,2],[0,0,1],[0,1,1],[0,1,1,2],[0,0,1,2]];      // + ABC · ABBC · AABC
+  const tpl=pick(templates), kinds=Math.max(...tpl)+1;
+  const toks=shuffle(pool).slice(0,kinds);
+  const unit=tpl.map(i=>toks[i]), unitLen=unit.length;
+  const full=[]; for(let i=0;i<unitLen*3+2;i++) full.push(unit[i%unitLen]);
+  let visible=Math.min(7, rint(unitLen+1, unitLen*2));          // varied length
+  if(state.profile==='preschool' && visible%unitLen===0) visible=Math.min(7, visible+1); // never end on a full repeat → answer isn't the first token
+  const seq=full.slice(0,visible), answer=full[visible];
   setPrompt(tt().prompt.pattern);
-  const row=el('div','',''); row.style.cssText='display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;';
-  seq.forEach(t=>{ const o=el('div','obj',t); o.style.fontSize='clamp(40px,8vw,74px)'; row.appendChild(o); });
-  const q=el('div','obj','❓'); q.style.fontSize='clamp(40px,8vw,74px)'; q.style.opacity='.7'; row.appendChild(q);
+  const row=el('div',''); row.style.cssText='display:flex;gap:clamp(6px,1.5vw,12px);flex-wrap:wrap;align-items:center;justify-content:center;';
+  seq.forEach(t=>{ const o=el('div','obj',t); o.style.fontSize='clamp(36px,7vw,66px)'; row.appendChild(o); });
+  const q=el('div','obj','❓'); q.style.fontSize='clamp(36px,7vw,66px)'; q.style.opacity='.7'; row.appendChild(q);
   $('#stage').appendChild(row);
-  mountChoices(shuffle(unit).map(t=>{ const btn=el('button',null,''); const o=el('div','obj',t); o.style.fontSize='clamp(40px,8vw,72px)'; btn.appendChild(o);
+  const choiceToks=new Set(unit);
+  if(state.profile==='preschool'){ const extra=pool.find(t=>!choiceToks.has(t)); if(extra) choiceToks.add(extra); }
+  mountChoices(shuffle([...choiceToks]).map(t=>{ const btn=el('button',''); const o=el('div','obj',t); o.style.fontSize='clamp(40px,8vw,72px)'; btn.appendChild(o);
     return { node:btn, correct:t===answer }; }));
 }
 
