@@ -367,7 +367,7 @@ function openCollection(){
    ============================================================ */
 const GEN = { count:rCount, feed:rFeed, add:rAdd, sub:rSub, balance:rBalance, shapes:rShapes, bigsmall:rBigSmall, colors:rColors, odd:rOdd, pattern:rPattern, abc:rABC, words:rWords, match:rMatch, trace:rTrace, flash:rFlash, phonics:rPhonics };
 let curDef=null, locked=false, playStart=0, inGame=false, flashTimer=null, pendingReload=false;
-function clearFlashTimer(){ if(flashTimer){ clearInterval(flashTimer); flashTimer=null; } }
+function clearFlashTimer(){ if(flashTimer){ clearTimeout(flashTimer); clearInterval(flashTimer); flashTimer=null; } }
 
 function startGame(def){ curDef=def; inGame=true; armBreak(); document.body.classList.add('playing'); show('game'); nextRound(); }
 function exitGame(){ inGame=false; clearFlashTimer(); document.body.classList.remove('playing'); try{ speechSynthesis.cancel(); }catch(e){} renderHome(); show('home');
@@ -520,21 +520,25 @@ function rFlash(){
   const grid=el('div','flash-grid',''); grid.style.gridTemplateColumns=`repeat(${c.c},1fr)`; grid.style.width=`min(90vw, ${c.c*108}px)`;
   const total=c.c*c.r, cells=[]; for(let i=0;i<total;i++){ const cell=el('div','fcell',''); grid.appendChild(cell); cells.push(cell); }
   col.appendChild(grid); stage.appendChild(col);
-  const icon = theme()==='dino' ? '🦖' : '⭐';
-  const lit = new Set(shuffle([...Array(total).keys()]).slice(0,c.n));
-  lit.forEach(i=>{ cells[i].classList.add('lit'); cells[i].textContent=icon; });
+  const litArr = shuffle([...Array(total).keys()]).slice(0,c.n);   // ordered lit cells
+  const orderOf={}; litArr.forEach((idx,n)=>orderOf[idx]=n+1);
+  const litSet = new Set(litArr);
   locked=true; clearFlashTimer();
   setPrompt(tt().prompt.flashStudy, tt().prompt.flashStudy);
-  let t=c.expo; $('#promptText').textContent=`${tt().prompt.flashStudy} (${t})`;
-  flashTimer=setInterval(()=>{ t--; if(t>0){ $('#promptText').textContent=`${tt().prompt.flashStudy} (${t})`; }
-    else { clearFlashTimer(); recall(); } },1000);
-  function recall(){
-    lit.forEach(i=>{ cells[i].classList.remove('lit'); cells[i].textContent=''; });
+  let k=0;                                                          // reveal cells ONE BY ONE, numbered + blinking
+  const revealNext=()=>{
+    if(k<litArr.length){ const cell=cells[litArr[k]]; cell.classList.add('lit','blink'); cell.textContent=String(k+1); sTap(); speak(word(k+1)); k++;
+      flashTimer=setTimeout(revealNext, 850); }
+    else { flashTimer=setTimeout(hideAndRecall, Math.max(1400, c.expo*250)); }
+  };
+  revealNext();
+  function hideAndRecall(){
+    litArr.forEach(i=>{ cells[i].classList.remove('lit','blink'); cells[i].textContent=''; });
     setPrompt(tt().prompt.flashRecall, tt().prompt.flashRecall);
     locked=false; let found=0;
     cells.forEach((cell,i)=>{ cell.onclick=()=>{ if(locked||cell.dataset.done)return;
-      if(lit.has(i)){ cell.dataset.done=1; cell.classList.add('lit','ok'); cell.textContent=icon; found++; sStar();
-        if(found===c.n){ locked=true; setTimeout(()=>winRound({}),500); } }
+      if(litSet.has(i)){ cell.dataset.done=1; cell.classList.add('lit','ok'); cell.textContent=String(orderOf[i]); found++; sStar();
+        if(found===litArr.length){ locked=true; setTimeout(()=>winRound({}),500); } }
       else { cell.classList.add('miss'); sWrong(); speak(pick(tt().tryagain)); setTimeout(()=>cell.classList.remove('miss'),450); } }; });
   }
 }
@@ -602,8 +606,9 @@ function rTrace(){
     pts.push({x:q.x,y:q.y,hit:false,el:dot}); }
   let drawing=false, hit=0, dstr='';
   const toSvg=(ev)=>{ const r=box.getBoundingClientRect(); return {x:(ev.clientX-r.left)/r.width*100, y:(ev.clientY-r.top)/r.height*100}; };
-  const check=(x,y)=>{ pts.forEach(p=>{ if(!p.hit && Math.hypot(p.x-x,p.y-y)<11){ p.hit=true; hit++; p.el.classList.add('hit'); } });
-    if(hit>=Math.round(pts.length*0.7) && !locked){ locked=true; userPath.setAttribute('d',DIGIT_D[n]); sStar(); setTimeout(()=>winRound({}),500); } };
+  const check=(x,y)=>{ pts.forEach(p=>{ if(!p.hit && Math.hypot(p.x-x,p.y-y)<10){ p.hit=true; hit++; p.el.classList.add('hit'); } });
+    // must trace almost the whole stroke AND reach the very end
+    if(hit>=Math.ceil(pts.length*0.9) && pts[pts.length-1].hit && !locked){ locked=true; userPath.setAttribute('d',DIGIT_D[n]); sStar(); setTimeout(()=>winRound({}),500); } };
   box.addEventListener('pointerdown',(ev)=>{ if(locked)return; drawing=true; const p=toSvg(ev); dstr=`M${p.x} ${p.y}`; userPath.setAttribute('d',dstr); check(p.x,p.y); ev.preventDefault(); });
   box.addEventListener('pointermove',(ev)=>{ if(!drawing||locked)return; const p=toSvg(ev); dstr+=` L${p.x} ${p.y}`; userPath.setAttribute('d',dstr); check(p.x,p.y); ev.preventDefault(); });
   const stop=()=>{ drawing=false; };

@@ -291,7 +291,9 @@ body.theme-pony{ background:
 .fcell{ aspect-ratio:1; border-radius:16px; background:rgba(255,255,255,.9);
   box-shadow:inset 0 2px 8px rgba(60,40,120,.08), 0 5px 0 rgba(120,90,190,.12); display:grid; place-items:center;
   font-size:clamp(26px,5vw,44px); cursor:pointer; transition:background .2s, transform .1s, box-shadow .2s; }
-.fcell.lit{ background:linear-gradient(160deg,#ffd23f,#ff9f1c); box-shadow:0 0 0 4px #ffd23f66, 0 6px 14px rgba(0,0,0,.16); animation:objIn .3s ease; }
+.fcell.lit{ background:linear-gradient(160deg,#ffd23f,#ff9f1c); box-shadow:0 0 0 4px #ffd23f66, 0 6px 14px rgba(0,0,0,.16); color:#fff; font-weight:900; text-shadow:0 2px 5px rgba(0,0,0,.3); }
+.fcell.blink{ animation:fblink .42s ease-in-out 3; }
+@keyframes fblink{ 0%,100%{ transform:scale(1); filter:brightness(1); } 50%{ transform:scale(1.15); filter:brightness(1.4); } }
 .fcell.ok{ background:linear-gradient(160deg,#2fd48a,#12b76a)!important; box-shadow:0 0 0 4px #34d39966!important; }
 .fcell.miss{ animation:wobble .4s; }
 .fcell:active{ transform:scale(.93); }
